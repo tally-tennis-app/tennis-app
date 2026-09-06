@@ -1,7 +1,8 @@
 # Next steps
 
 A roadmap from the current foundation to a working pilot. Written 2026-09-06 against
-commit `5886385` on `fix/ci-bootstrap`.
+commit `5886385` on `fix/ci-bootstrap`, with Milestone 0 status updated after
+pull request #4 merged.
 
 Read this alongside [`docs/product-questions.md`](docs/product-questions.md), which
 records the resolved product decisions,
@@ -46,13 +47,14 @@ Everything the product actually is:
 
 ### Known defects and gaps in what does exist
 
-| #   | Issue                                                                                                                                                                                                       | Status                                                   |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| 1   | CI ran `typecheck` before `build`, so `.next/types` did not exist and the global `LayoutProps` helper was undefined. Every pull request failed the `quality` check.                                         | **Fixed** on `fix/ci-bootstrap` (`5886385`), needs merge |
-| 2   | Three Dependabot pull requests (#1, #2, #3) are open and all red, blocked by defect 1.                                                                                                                      | Unblocked once `fix/ci-bootstrap` lands                  |
-| 3   | `createSupabaseServerClient()` silently swallows cookie writes ([`src/lib/supabase/server.ts:20-26`](src/lib/supabase/server.ts#L20-L26)). Without a proxy that refreshes sessions, logins expire silently. | Blocks Milestone A                                       |
-| 4   | E2E coverage is Chromium desktop only, on a product whose primary surface is an installed mobile PWA.                                                                                                       | Add a mobile viewport project in Milestone C             |
-| 5   | No `.github/workflows` job runs against a real Supabase instance, so RLS policies will have no CI enforcement by default.                                                                                   | Must be solved inside Milestone B, not after             |
+| #   | Issue                                                                                                                                                                                                       | Status                                                                 |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| 1   | CI ran `typecheck` before `build`, so `.next/types` did not exist and the global `LayoutProps` helper was undefined. Every pull request failed the `quality` check.                                         | **Fixed.** Merged to `main` as pull request #4                         |
+| 2   | Three Dependabot pull requests (#1, #2, #3) were open and red, blocked by defect 1.                                                                                                                         | #1 and #2 auto-closed. #3 is red for a different reason — see defect 6 |
+| 6   | Dependabot #3 bundles `@types/node`, `eslint`, and `typescript` in one development-dependency group. Its TypeScript 7.0 bump fails lint with `typescript-eslint does not support TS 7.0`.                   | Blocks the last of Milestone 0 — decision needed                       |
+| 3   | `createSupabaseServerClient()` silently swallows cookie writes ([`src/lib/supabase/server.ts:20-26`](src/lib/supabase/server.ts#L20-L26)). Without a proxy that refreshes sessions, logins expire silently. | Blocks Milestone A                                                     |
+| 4   | E2E coverage is Chromium desktop only, on a product whose primary surface is an installed mobile PWA.                                                                                                       | Add a mobile viewport project in Milestone C                           |
+| 5   | No `.github/workflows` job runs against a real Supabase instance, so RLS policies will have no CI enforcement by default.                                                                                   | Must be solved inside Milestone B, not after                           |
 
 ---
 
@@ -94,13 +96,29 @@ generated avatars, tournaments, and social login. All already deferred in
 
 **Goal:** a green `main` and an empty pull request queue.
 
-1. Open a pull request for `fix/ci-bootstrap` and merge it. It makes `typecheck` run
-   `next typegen && tsc --noEmit`, which is the pattern Next 16 documents for
-   type-checking route types in CI without a full build.
-2. Merge or close Dependabot #1 and #2. The branch already bumps `actions/checkout` and
-   `actions/setup-node` to v7, so once it lands these two are redundant and Dependabot
-   will close them on its next run.
-3. Rebase Dependabot #3 (development dependencies) and merge once green.
+**Mostly done.** `main` carries the CI fix and its last three runs are green.
+
+1. ~~Merge `fix/ci-bootstrap`.~~ Landed as pull request #4. `typecheck` now runs
+   `next typegen && tsc --noEmit`, the pattern Next 16 documents for type-checking route
+   types in CI without a full build.
+2. ~~Merge or close Dependabot #1 and #2.~~ Both auto-closed once the `actions/checkout`
+   and `actions/setup-node` v7 bumps landed, exactly as expected.
+3. **Dependabot #3 remains open and red**, but not because of defect 1. It fails lint with
+   `typescript-eslint does not support TS 7.0`. This is a real upstream incompatibility
+   introduced by the pull request's own TypeScript bump, so rebasing will not fix it.
+
+   Two ways out, and this is a decision rather than a chore:
+
+   - **Split TypeScript out of the development-dependency group** in
+     `.github/dependabot.yml`, merge the `@types/node` and `eslint` bumps now, and let
+     TypeScript arrive as its own pull request that stays red until typescript-eslint
+     ships support. Keeps the other updates flowing.
+   - **Hold #3 entirely** until typescript-eslint supports TypeScript 7.0, accepting that
+     `@types/node` and `eslint` sit stale behind it.
+
+   Prefer the split. A grouped pull request that can never go green blocks unrelated
+   updates indefinitely, and the group exists to reduce noise, not to couple upgrades that
+   have different readiness dates.
 
 **Done when:** `main` is green and no pull request is open.
 
@@ -305,6 +323,7 @@ Not optional, and easy to forget until the day of launch.
 
 ```
 Milestone 0  ──▶  decisions landed as documentation (done)
+   (#3 open)
                         │
 Milestone A (auth, proxy.ts, Supabase CLI, migrations)
                         │
