@@ -56,8 +56,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the complete working agreement.
 
 - Pull requests receive Vercel preview deployments.
 - `main` deploys to production.
-- Foundation previews and production may share the empty development Supabase project.
-- Create a separate production Supabase project before any pilot user or match data is stored.
+- Previews and production share one Supabase project. This is a deliberate, time-limited tradeoff recorded in [ADR 0002](docs/decisions/0002-match-immutability-and-derived-ratings.md); no seeded or destructive end-to-end test may run against it, and it must be split before anyone outside the pilot group is onboarded.
 - The only browser-exposed values are `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 
 ## Install as a desktop app
@@ -68,7 +67,7 @@ Native installers are intentionally deferred. See [the desktop decision record](
 
 ## Product boundaries
 
-This foundation contains no database schema, authentication flow, score parsing, Elo calculation, scheduling, tournament engine, push notifications, or offline synchronization. The open decisions that must precede those features are tracked in [docs/product-questions.md](docs/product-questions.md).
+This foundation contains no database schema, authentication flow, score parsing, Elo calculation, scheduling, tournament engine, push notifications, or offline synchronization. The product decisions that precede those features are resolved and recorded in [docs/product-questions.md](docs/product-questions.md), with the reasoning behind match immutability and derived ratings in [ADR 0002](docs/decisions/0002-match-immutability-and-derived-ratings.md). The build order is in [nextsteps.md](nextsteps.md).
 
 ## License
 
