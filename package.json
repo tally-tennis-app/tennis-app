@@ -1,0 +1,47 @@
+{
+  "name": "tennis-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.12.6",
+    "@supabase/supabase-js": "^2.115.0",
+    "next": "16.3.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@tailwindcss/postcss": "^4",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.1.1",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "16.3.4",
+    "jsdom": "^30.0.1",
+    "prettier": "^3.9.6",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^5.0.0"
+  }
+}

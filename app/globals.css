@@ -1,0 +1,195 @@
+@import "tailwindcss";
+
+:root {
+  --chalk: #f0eee5;
+  --paper: #f8f6ef;
+  --ink: #102721;
+  --muted: #53645e;
+  --line: #c9cbc0;
+  --clay: #ad4b34;
+  --court: #1b4b3f;
+  --ball: #d8ef56;
+  --font-body: Arial, Helvetica, sans-serif;
+}
+
+@theme inline {
+  --color-background: var(--chalk);
+  --color-foreground: var(--ink);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--chalk);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), var(--font-body);
+}
+
+::selection {
+  background: var(--ball);
+  color: var(--ink);
+}
+
+.font-display {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.brand-mark {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 1px solid var(--ink);
+  background: var(--ball);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease;
+}
+
+.group:hover .brand-mark {
+  transform: rotate(-5deg);
+  background: #e4f778;
+}
+
+.court-shadow {
+  background:
+    radial-gradient(circle at 30% 30%, rgb(216 239 86 / 24%), transparent 48%),
+    radial-gradient(circle at 70% 80%, rgb(189 86 59 / 18%), transparent 44%);
+  filter: blur(22px);
+}
+
+.scoreboard {
+  position: relative;
+  z-index: 2;
+  margin-left: 6%;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  border: 1px solid rgb(255 255 255 / 18%);
+  background: var(--ink);
+  color: white;
+  box-shadow: 0 30px 80px rgb(16 39 33 / 20%);
+}
+
+.scoreboard-label,
+.eyebrow {
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.scoreboard-label {
+  color: rgb(255 255 255 / 55%);
+}
+
+.eyebrow {
+  color: var(--clay);
+}
+
+.verified-mark {
+  border: 1px solid rgb(216 239 86 / 52%);
+  padding: 0.45rem 0.65rem;
+  color: var(--ball);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.score-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-bottom: 1.75rem;
+}
+
+.sets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(2rem, 2.75rem));
+  gap: 0.25rem;
+  text-align: center;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.8rem, 5vw, 2.8rem);
+  line-height: 1;
+}
+
+.set-lost {
+  color: rgb(255 255 255 / 38%);
+}
+
+.set-won {
+  color: var(--ball);
+}
+
+.court-lines {
+  position: relative;
+  width: 88%;
+  height: 9rem;
+  margin-top: -2rem;
+  border: 2px solid rgb(248 246 239 / 85%);
+  background: var(--court);
+  box-shadow: 0 24px 60px rgb(16 39 33 / 14%);
+}
+
+.court-net,
+.court-service {
+  position: absolute;
+  display: block;
+  background: rgb(248 246 239 / 85%);
+}
+
+.court-net {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+}
+
+.court-service {
+  top: 50%;
+  width: 50%;
+  height: 2px;
+}
+
+.court-service-left {
+  left: 0;
+}
+
+.court-service-right {
+  right: 0;
+}
+
+@media (max-width: 767px) {
+  .scoreboard {
+    margin-left: 0;
+  }
+
+  .court-lines {
+    width: 94%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
