@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import {
   leaveGroup,
   removeMember,
+  restoreMember,
   rotateInvite,
   setMemberRole,
 } from "@/app/groups/actions";
@@ -113,11 +114,34 @@ export default async function GroupPage({
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold">Former members</h2>
           <p className="text-sm text-[var(--muted)]">
-            Their results stay in the group history.
+            Their results stay in the group history. Someone an organizer
+            removed cannot rejoin with the invite code.
           </p>
-          <ul className="flex flex-col gap-1 text-[var(--muted)]">
+          <ul className="flex flex-col gap-2">
             {departed.map((member) => (
-              <li key={member.userId}>{member.displayName}</li>
+              <li
+                key={member.userId}
+                className="flex flex-wrap items-center justify-between gap-2 text-[var(--muted)]"
+              >
+                <span>
+                  {member.displayName}{" "}
+                  <span className="text-sm">
+                    {member.wasRemoved ? "removed" : "left"}
+                  </span>
+                </span>
+                {group.viewerIsOrganizer ? (
+                  <form action={restoreMember}>
+                    <input type="hidden" name="groupId" value={group.id} />
+                    <input type="hidden" name="userId" value={member.userId} />
+                    <button
+                      type="submit"
+                      className="rounded border border-[var(--line)] px-3 py-1.5 text-sm"
+                    >
+                      Restore
+                    </button>
+                  </form>
+                ) : null}
+              </li>
             ))}
           </ul>
         </section>

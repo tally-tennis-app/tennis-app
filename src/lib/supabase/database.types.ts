@@ -39,6 +39,7 @@ export type Database = {
           group_id: string
           joined_at: string
           left_at: string | null
+          removed_by: string | null
           role: string
           user_id: string
         }
@@ -46,6 +47,7 @@ export type Database = {
           group_id: string
           joined_at?: string
           left_at?: string | null
+          removed_by?: string | null
           role?: string
           user_id: string
         }
@@ -53,6 +55,7 @@ export type Database = {
           group_id?: string
           joined_at?: string
           left_at?: string | null
+          removed_by?: string | null
           role?: string
           user_id?: string
         }
@@ -62,6 +65,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_members_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -141,6 +151,10 @@ export type Database = {
       join_group_by_code: { Args: { code: string }; Returns: string }
       leave_group: { Args: { target_group: string }; Returns: undefined }
       remove_group_member: {
+        Args: { target_group: string; target_user: string }
+        Returns: undefined
+      }
+      restore_group_member: {
         Args: { target_group: string; target_user: string }
         Returns: undefined
       }
