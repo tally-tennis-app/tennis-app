@@ -85,9 +85,12 @@ select is(
   'a user cannot update another user''s profile'
 );
 
--- Act as a signed-out visitor.
+-- Act as a signed-out visitor. `set local role` is permitted here because the
+-- privilege check is against the session role, not the current one.
 set local role anon;
-set local request.jwt.claims to null;
+-- Not `to null`, which is a syntax error for a custom parameter. auth.uid()
+-- treats the empty string as no claims.
+set local request.jwt.claims to '';
 
 select is(
   (select count(*)::int from public.profiles),
