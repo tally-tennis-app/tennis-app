@@ -2,7 +2,8 @@
 
 A roadmap from the current foundation to a working pilot. Written 2026-09-06 against
 commit `5886385` on `fix/ci-bootstrap`, with Milestone 0 status updated after
-pull request #4 merged and Milestone A status updated after pull request #6 merged.
+pull request #4 merged, and Milestone A and B status updated after pull requests #6,
+#7 and #8 merged.
 
 Read this alongside [`docs/product-questions.md`](docs/product-questions.md), which
 records the resolved product decisions,
@@ -17,26 +18,28 @@ which fixes match immutability and derived ratings.
 
 ### What exists and works
 
-| Area         | State                                                                                                                                                                   |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Framework    | Next.js 16.3.4, React 19.2.8, App Router, Tailwind v4, TypeScript strict                                                                                                |
-| Routes       | `/` landing page, `/signup`, `/login`, `/reset-password`, `/update-password`, `/auth/callback`, `/dashboard`, plus `error.tsx`, `not-found.tsx`, `manifest.webmanifest` |
-| PWA          | Manifest with standalone display and 192/512 maskable icons                                                                                                             |
-| Supabase     | Browser and server client factories, `@supabase/ssr`, CLI stack in `supabase/`, `profiles` migration with RLS                                                           |
-| Auth         | Email/password signup with confirmation, sign-in, reset, sign-out; `proxy.ts` refreshes sessions                                                                        |
-| Env          | `readPublicEnv()` validates presence and enforces an HTTPS Supabase URL                                                                                                 |
-| Tests        | 6 Vitest files / 35 tests; 4 Playwright specs (Chromium only)                                                                                                           |
-| CI           | `quality` job: format, lint, typecheck, unit, build, e2e. `database` job: applies migrations to an empty Supabase stack and runs `supabase test db`                     |
-| Repo process | CODEOWNERS, PR template, issue templates, Dependabot, CONTRIBUTING working agreement                                                                                    |
+| Area         | State                                                                                                                                                                                              |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework    | Next.js 16.3.4, React 19.2.8, App Router, Tailwind v4, TypeScript strict                                                                                                                           |
+| Routes       | `/` landing page, `/signup`, `/login`, `/reset-password`, `/update-password`, `/auth/callback`, `/dashboard`, `/groups`, `/groups/[id]`, plus `error.tsx`, `not-found.tsx`, `manifest.webmanifest` |
+| PWA          | Manifest with standalone display and 192/512 maskable icons                                                                                                                                        |
+| Supabase     | Browser and server client factories, `@supabase/ssr`, CLI stack in `supabase/`, `profiles` and `groups` migrations with RLS, generated types committed                                             |
+| Groups       | Create, join by invite code, roster, promote/demote, remove with restore, organizer transfer, invite rotation                                                                                      |
+| Auth         | Email/password signup with confirmation, sign-in, reset, sign-out; `proxy.ts` refreshes sessions                                                                                                   |
+| Env          | `readPublicEnv()` validates presence and requires HTTPS except on loopback, so the local stack works                                                                                               |
+| Tests        | 6 Vitest files / 35 tests; 7 Playwright specs (Chromium only); 41 pgTAP policy tests across 2 files                                                                                                |
+| CI           | `quality` job: format, lint, typecheck, unit, build, e2e. `database` job: applies migrations to an empty Supabase stack and runs `supabase test db`                                                |
+| Repo process | CODEOWNERS, PR template, issue templates, Dependabot, CONTRIBUTING working agreement                                                                                                               |
 
 ### What does not exist yet
 
-Authentication landed in Milestone A. Everything the product actually is still does not:
+Authentication landed in Milestone A and groups in Milestone B. The match loop the
+landing page promises still does not:
 
-- **No product surface.** The landing page is static marketing copy. It describes a
-  three-step match loop — log, confirm, watch the table move — and none of those three
-  steps exist. `/dashboard` is a signed-in placeholder.
-- **No groups, matches, standings, or ratings.** The only table is `profiles`.
+- **No matches, standings, or ratings.** Milestone C is the first of these, and the first
+  consumer of the `is_group_member()` predicate that Milestone B exists to provide.
+- **No application shell.** The landing page is still static marketing copy, and
+  `/dashboard` is a placeholder that links to groups. Milestone D replaces it.
 - **No environments split.** No hosted Supabase project exists at all; development runs
   against the local CLI stack. Preview and production projects are required before a
   single pilot user record is stored.
@@ -50,6 +53,7 @@ Authentication landed in Milestone A. Everything the product actually is still d
 | 6   | Dependabot #3 bundles `@types/node`, `eslint`, and `typescript` in one development-dependency group. Its TypeScript 7.0 bump fails lint with `typescript-eslint does not support TS 7.0`.                   | Blocks the last of Milestone 0 — decision needed                                                                                         |
 | 3   | `createSupabaseServerClient()` silently swallows cookie writes ([`src/lib/supabase/server.ts:20-26`](src/lib/supabase/server.ts#L20-L26)). Without a proxy that refreshes sessions, logins expire silently. | **Fixed.** `proxy.ts` merged to `main` as pull request #6                                                                                |
 | 4   | E2E coverage is Chromium desktop only, on a product whose primary surface is an installed mobile PWA.                                                                                                       | Add a mobile viewport project in Milestone C                                                                                             |
+| 7   | A removed member could rejoin with the invite code they already knew, silently undoing the removal. Found by clicking through the app, not by any test.                                                     | **Fixed** in pull request #8 (`removed_by`)                                                                                              |
 | 5   | No `.github/workflows` job runs against a real Supabase instance, so RLS policies will have no CI enforcement by default.                                                                                   | **Fixed.** The `database` job in `ci.yml` merged as pull request #6. Milestone B adds its policy tests to `supabase/tests/`, not the job |
 
 ---
@@ -171,11 +175,26 @@ the repository so `typecheck` catches schema drift.
 
 ## 5. Milestone B — Groups
 
+**Done**, pull requests #7 and #8.
+
 **Goal:** the invite-only group that the pilot depends on.
 
 This milestone is the security spine of the product. Every later table inherits the
 "can this user see this group" predicate established here, so the policies deserve more
 care than the UI.
+
+### What Milestone C inherits
+
+- `public.is_group_member(uuid)` and `public.is_group_organizer(uuid)` are the single
+  definition of membership. Reuse them in the `matches` policies rather than writing a
+  fresh subquery — they are `SECURITY DEFINER` precisely so a policy on a table can ask
+  about membership without recursing.
+- Membership mutations live in `SECURITY DEFINER` functions, not `UPDATE` policies.
+  `group_members` has a `SELECT` policy and nothing else, so a crafted direct write has
+  no path. Match confirmation has the same shape of rule ("only a participant, and never
+  your own submission") and should follow the same pattern.
+- A departed member keeps their row with `left_at` set, and `removed_by` distinguishes
+  removal from leaving. Standings must include departed members' past results.
 
 ### Schema
 
@@ -325,7 +344,7 @@ Milestone 0  ──▶  decisions landed as documentation (done)
                         │
 Milestone A (auth, proxy.ts, Supabase CLI, migrations) — done, pull request #6
                         │
-Milestone B (groups, RLS policies and policy tests)
+Milestone B (groups, RLS policies and policy tests) — done, pull requests #7 and #8
                         │
 Milestone C (matches, standings) ══ Milestone D (app shell) — in parallel
                         │
