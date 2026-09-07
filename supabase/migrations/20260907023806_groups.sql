@@ -209,7 +209,7 @@ begin
   values (target_group, actor, 'player')
   on conflict (group_id, user_id)
     do update set left_at = null, role = 'player'
-    where public.group_members.left_at is not null;
+    where group_members.left_at is not null;
 
   return target_group;
 end;
@@ -356,7 +356,7 @@ end;
 $$;
 
 -- The code is generated server-side so a client cannot choose a guessable one.
-create function public.create_group(name text)
+create function public.create_group(group_name text)
 returns uuid
 language plpgsql
 security definer
@@ -372,7 +372,7 @@ begin
 
   insert into public.groups (name, invite_code, created_by)
   values (
-    trim(name),
+    trim(group_name),
     upper(substr(md5(gen_random_uuid()::text), 1, 8)),
     actor
   )
@@ -408,4 +408,4 @@ grant execute on function
   public.set_group_member_role(uuid, uuid, text),
   public.rotate_group_invite(uuid, integer),
   public.create_group(text)
-to authenticated;
+to authenticated, service_role;
