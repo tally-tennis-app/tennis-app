@@ -39,6 +39,19 @@ test("offers a labelled sign-in form and a route to the other auth pages", async
   expect(browserErrors).toEqual([]);
 });
 
+// Protection is deny-by-default: anything not on the public list is guarded,
+// so a route added later is covered without anyone remembering to list it.
+for (const path of [
+  "/dashboard",
+  "/groups",
+  "/groups/00000000-0000-0000-0000-000000000000",
+]) {
+  test(`protects ${path} from anonymous visitors`, async ({ page }) => {
+    await page.goto(path);
+    await expect(page).toHaveURL(`/login?next=${encodeURIComponent(path)}`);
+  });
+}
+
 test("keeps the marketing page reachable while signed out", async ({
   page,
 }) => {

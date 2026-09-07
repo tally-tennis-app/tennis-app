@@ -34,6 +34,80 @@ export type Database = {
   }
   public: {
     Tables: {
+      group_members: {
+        Row: {
+          group_id: string
+          joined_at: string
+          left_at: string | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          joined_at?: string
+          left_at?: string | null
+          role?: string
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          joined_at?: string
+          left_at?: string | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          invite_code: string
+          invite_expires_at: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invite_code: string
+          invite_expires_at?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invite_code?: string
+          invite_expires_at?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groups_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -57,7 +131,28 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      active_organizer_count: {
+        Args: { target_group: string }
+        Returns: number
+      }
+      create_group: { Args: { group_name: string }; Returns: string }
+      is_group_member: { Args: { target_group: string }; Returns: boolean }
+      is_group_organizer: { Args: { target_group: string }; Returns: boolean }
+      join_group_by_code: { Args: { code: string }; Returns: string }
+      leave_group: { Args: { target_group: string }; Returns: undefined }
+      remove_group_member: {
+        Args: { target_group: string; target_user: string }
+        Returns: undefined
+      }
+      rotate_group_invite: {
+        Args: { target_group: string; valid_days?: number }
+        Returns: string
+      }
+      set_group_member_role: {
+        Args: { new_role: string; target_group: string; target_user: string }
+        Returns: undefined
+      }
+      shares_group_with: { Args: { other_user: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
