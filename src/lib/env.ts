@@ -10,6 +10,12 @@ const publicEnvironmentKeys = [
   "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
 ] as const;
 
+const loopbackHostnames = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+
+function isLoopback(hostname: string): boolean {
+  return loopbackHostnames.has(hostname);
+}
+
 export function readPublicEnv(
   source: EnvironmentSource = process.env,
 ): PublicEnv {
@@ -25,14 +31,19 @@ export function readPublicEnv(
   const supabasePublishableKey =
     source.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!.trim();
 
-  try {
-    const parsedUrl = new URL(supabaseUrl);
+  let parsedUrl: URL;
 
-    if (parsedUrl.protocol !== "https:") {
-      throw new Error("Expected HTTPS");
-    }
+  try {
+    parsedUrl = new URL(supabaseUrl);
   } catch {
-    throw new Error("NEXT_PUBLIC_SUPABASE_URL must be a valid HTTPS URL");
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL must be a valid URL");
+  }
+
+  // The local Supabase stack serves plain HTTP on a loopback port, so requiring
+  // HTTPS everywhere would make `supabase start` unusable for development.
+  // Every other host must still be HTTPS.
+  if (parsedUrl.protocol !== "https:" && !isLoopback(parsedUrl.hostname)) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL must use HTTPS");
   }
 
   return Object.freeze({ supabaseUrl, supabasePublishableKey });

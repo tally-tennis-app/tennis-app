@@ -53,3 +53,38 @@ jobs:
 
       - name: Run browser smoke test
         run: npm run test:e2e
+
+  database:
+    name: database
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Migrations are applied from an empty database, so a migration that only
+      # works against an already-migrated schema fails here.
+      - name: Start Supabase and apply migrations
+        run: npx supabase start
+
+      - name: Reset the database from migrations
+        run: npx supabase db reset
+
+      # Policy tests run as unprivileged roles. Without this job the
+      # "policy tests in the same pull request" rule in CONTRIBUTING.md would
+      # have no enforcement.
+      - name: Run Row Level Security policy tests
+        run: npx supabase test db
+
+      - name: Stop Supabase
+        if: always()
+        run: npx supabase stop --no-backup
