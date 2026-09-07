@@ -25,13 +25,22 @@ create table public.group_members (
   -- Decision D18: a departed member keeps their row and stays in standings.
   -- Removing the row would silently change every remaining member's rating.
   left_at timestamptz,
-  primary key (group_id, user_id)
+  -- Distinguishes "an organizer removed me" from "I left". Without it a removed
+  -- member simply rejoins with the invite code they already know, which makes
+  -- removal meaningless. Null while active, and null for a voluntary departure.
+  removed_by uuid references public.profiles (id) on delete set null,
+  primary key (group_id, user_id),
+  constraint group_members_removed_implies_left
+    check (removed_by is null or left_at is not null)
 );
 
 create index group_members_user_id_idx on public.group_members (user_id);
 
 comment on column public.group_members.left_at is
   'Null means active. A departed member keeps their row so their results stay in the group history.';
+
+comment on column public.group_members.removed_by is
+  'Set when an organizer removed this member. Such a member cannot rejoin with the invite code; an organizer must restore them.';
 
 -- --------------------------------------------------------------------------
 -- Membership predicates
@@ -185,6 +194,8 @@ as $$
 declare
   actor uuid := (select auth.uid());
   target_group uuid;
+  existing_left_at timestamptz;
+  existing_removed_by uuid;
 begin
   if actor is null then
     raise exception 'Not authenticated' using errcode = '28000';
@@ -202,14 +213,31 @@ begin
     raise exception 'That invite code is not valid' using errcode = '22023';
   end if;
 
-  -- A previously departed member rejoins by clearing left_at, keeping their
-  -- original joined_at and history. They return as a player regardless of the
-  -- role they held before.
-  insert into public.group_members (group_id, user_id, role)
-  values (target_group, actor, 'player')
-  on conflict (group_id, user_id)
-    do update set left_at = null, role = 'player'
-    where group_members.left_at is not null;
+  select left_at, removed_by into existing_left_at, existing_removed_by
+  from public.group_members
+  where group_id = target_group and user_id = actor;
+
+  if found then
+    if existing_left_at is null then
+      return target_group;
+    end if;
+
+    -- Removal is sticky. Otherwise an organizer removing someone achieves
+    -- nothing: the code they already know lets them straight back in.
+    if existing_removed_by is not null then
+      raise exception 'An organizer removed you from that group'
+        using errcode = '42501';
+    end if;
+
+    -- Someone who left of their own accord may return, keeping their original
+    -- joined_at and history, as a player whatever role they held before.
+    update public.group_members
+    set left_at = null, role = 'player'
+    where group_id = target_group and user_id = actor;
+  else
+    insert into public.group_members (group_id, user_id, role)
+    values (target_group, actor, 'player');
+  end if;
 
   return target_group;
 end;
@@ -274,8 +302,32 @@ begin
   end if;
 
   update public.group_members
-  set left_at = now()
+  set left_at = now(), removed_by = (select auth.uid())
   where group_id = target_group and user_id = target_user;
+end;
+$$;
+
+-- The counterpart to removal. Without it an accidental Remove is unfixable,
+-- since a removed member can no longer rejoin with the code.
+create function public.restore_group_member(target_group uuid, target_user uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_group_organizer(target_group) then
+    raise exception 'Only an organizer can restore a member' using errcode = '42501';
+  end if;
+
+  update public.group_members
+  set left_at = null, removed_by = null, role = 'player'
+  where group_id = target_group and user_id = target_user and left_at is not null;
+
+  if not found then
+    raise exception 'That person is not a former member of this group'
+      using errcode = '42501';
+  end if;
 end;
 $$;
 
@@ -392,6 +444,7 @@ revoke execute on function
   public.join_group_by_code(text),
   public.leave_group(uuid),
   public.remove_group_member(uuid, uuid),
+  public.restore_group_member(uuid, uuid),
   public.set_group_member_role(uuid, uuid, text),
   public.rotate_group_invite(uuid, integer),
   public.create_group(text)
@@ -405,6 +458,7 @@ grant execute on function
   public.join_group_by_code(text),
   public.leave_group(uuid),
   public.remove_group_member(uuid, uuid),
+  public.restore_group_member(uuid, uuid),
   public.set_group_member_role(uuid, uuid, text),
   public.rotate_group_invite(uuid, integer),
   public.create_group(text)
