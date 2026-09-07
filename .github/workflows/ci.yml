@@ -85,6 +85,18 @@ jobs:
       - name: Run Row Level Security policy tests
         run: npx supabase test db
 
+      # This machine has no container runtime, so the generated types are
+      # produced here and downloaded to be committed. Once committed, this step
+      # doubles as the schema-drift alarm: regenerate and diff.
+      - name: Generate database types
+        run: npx supabase gen types typescript --local > database.types.generated.ts
+
+      - name: Upload database types
+        uses: actions/upload-artifact@v5
+        with:
+          name: database-types
+          path: database.types.generated.ts
+
       - name: Stop Supabase
         if: always()
         run: npx supabase stop --no-backup
