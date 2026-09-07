@@ -3,9 +3,10 @@
 import { createBrowserClient } from "@supabase/ssr";
 
 import { readPublicEnv, type EnvironmentSource } from "@/src/lib/env";
+import type { Database } from "@/src/lib/supabase/database.types";
 
 export function createSupabaseBrowserClient(source?: EnvironmentSource) {
   const { supabaseUrl, supabasePublishableKey } = readPublicEnv(source);
 
-  return createBrowserClient(supabaseUrl, supabasePublishableKey);
+  return createBrowserClient<Database>(supabaseUrl, supabasePublishableKey);
 }

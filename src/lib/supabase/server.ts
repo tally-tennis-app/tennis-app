@@ -2,12 +2,13 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 import { readPublicEnv } from "@/src/lib/env";
+import type { Database } from "@/src/lib/supabase/database.types";
 
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
   const { supabaseUrl, supabasePublishableKey } = readPublicEnv();
 
-  return createServerClient(supabaseUrl, supabasePublishableKey, {
+  return createServerClient<Database>(supabaseUrl, supabasePublishableKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -18,8 +19,9 @@ export async function createSupabaseServerClient() {
             cookieStore.set(name, value, options);
           });
         } catch {
-          // Server Components cannot write cookies. A future auth proxy will
-          // refresh sessions and apply cookie updates before protected routes.
+          // Server Components cannot write cookies. `proxy.ts` refreshes the
+          // session and applies the rotated cookies before the route renders,
+          // so swallowing this here loses nothing.
         }
       },
     },
