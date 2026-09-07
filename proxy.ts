@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { resolveAuthRedirect } from "@/src/lib/auth/routes";
 import { readPublicEnv } from "@/src/lib/env";
+import type { Database } from "@/src/lib/supabase/database.types";
 
 /**
  * Refreshes the Supabase session on every matched request and applies the
@@ -24,24 +25,28 @@ export async function proxy(request: NextRequest) {
 
   let response = NextResponse.next({ request });
 
-  const supabase = createServerClient(supabaseUrl, supabasePublishableKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        for (const { name, value } of cookiesToSet) {
-          request.cookies.set(name, value);
-        }
+  const supabase = createServerClient<Database>(
+    supabaseUrl,
+    supabasePublishableKey,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          for (const { name, value } of cookiesToSet) {
+            request.cookies.set(name, value);
+          }
 
-        response = NextResponse.next({ request });
+          response = NextResponse.next({ request });
 
-        for (const { name, value, options } of cookiesToSet) {
-          response.cookies.set(name, value, options);
-        }
+          for (const { name, value, options } of cookiesToSet) {
+            response.cookies.set(name, value, options);
+          }
+        },
       },
     },
-  });
+  );
 
   // getUser() revalidates the token with the auth server and refreshes it when
   // expired, which is what triggers setAll above. getSession() only decodes the
