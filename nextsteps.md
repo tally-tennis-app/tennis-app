@@ -2,7 +2,7 @@
 
 A roadmap from the current foundation to a working pilot. Written 2026-09-06 against
 commit `5886385` on `fix/ci-bootstrap`, with Milestone 0 status updated after
-pull request #4 merged.
+pull request #4 merged and Milestone A status updated after pull request #6 merged.
 
 Read this alongside [`docs/product-questions.md`](docs/product-questions.md), which
 records the resolved product decisions,
@@ -17,44 +17,40 @@ which fixes match immutability and derived ratings.
 
 ### What exists and works
 
-| Area         | State                                                                                 |
-| ------------ | ------------------------------------------------------------------------------------- |
-| Framework    | Next.js 16.3.4, React 19.2.8, App Router, Tailwind v4, TypeScript strict              |
-| Routes       | `/` marketing landing page, plus `error.tsx`, `not-found.tsx`, `manifest.webmanifest` |
-| PWA          | Manifest with standalone display and 192/512 maskable icons                           |
-| Supabase     | Browser and server client factories, `@supabase/ssr`                                  |
-| Env          | `readPublicEnv()` validates presence and enforces an HTTPS Supabase URL               |
-| Tests        | 5 Vitest files / 9 tests; 1 Playwright smoke test (Chromium only)                     |
-| CI           | `quality` job: format, lint, typecheck, unit, build, e2e                              |
-| Repo process | CODEOWNERS, PR template, issue templates, Dependabot, CONTRIBUTING working agreement  |
+| Area         | State                                                                                                                                                                   |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework    | Next.js 16.3.4, React 19.2.8, App Router, Tailwind v4, TypeScript strict                                                                                                |
+| Routes       | `/` landing page, `/signup`, `/login`, `/reset-password`, `/update-password`, `/auth/callback`, `/dashboard`, plus `error.tsx`, `not-found.tsx`, `manifest.webmanifest` |
+| PWA          | Manifest with standalone display and 192/512 maskable icons                                                                                                             |
+| Supabase     | Browser and server client factories, `@supabase/ssr`, CLI stack in `supabase/`, `profiles` migration with RLS                                                           |
+| Auth         | Email/password signup with confirmation, sign-in, reset, sign-out; `proxy.ts` refreshes sessions                                                                        |
+| Env          | `readPublicEnv()` validates presence and enforces an HTTPS Supabase URL                                                                                                 |
+| Tests        | 6 Vitest files / 35 tests; 4 Playwright specs (Chromium only)                                                                                                           |
+| CI           | `quality` job: format, lint, typecheck, unit, build, e2e. `database` job: applies migrations to an empty Supabase stack and runs `supabase test db`                     |
+| Repo process | CODEOWNERS, PR template, issue templates, Dependabot, CONTRIBUTING working agreement                                                                                    |
 
 ### What does not exist yet
 
-Everything the product actually is:
+Authentication landed in Milestone A. Everything the product actually is still does not:
 
-- **No database.** No tables, no migrations directory, no Supabase CLI, no seed data, no
-  generated database types. Nothing has ever been written to Supabase.
-- **No authentication.** No sign-in route, no session handling, no `proxy.ts`, no protected
-  routes, no concept of a current user anywhere in the codebase.
 - **No product surface.** The landing page is static marketing copy. It describes a
   three-step match loop — log, confirm, watch the table move — and none of those three
-  steps exist.
-- **No authorization.** `CONTRIBUTING.md` requires RLS policies and policy tests in the
-  same pull request as any user-data table. No policies exist because no tables exist.
-- **No environments split.** Previews and production may still share the empty development
-  Supabase project. A separate production project is required before a single pilot user
-  record is stored.
+  steps exist. `/dashboard` is a signed-in placeholder.
+- **No groups, matches, standings, or ratings.** The only table is `profiles`.
+- **No environments split.** No hosted Supabase project exists at all; development runs
+  against the local CLI stack. Preview and production projects are required before a
+  single pilot user record is stored.
 
 ### Known defects and gaps in what does exist
 
-| #   | Issue                                                                                                                                                                                                       | Status                                                                 |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| 1   | CI ran `typecheck` before `build`, so `.next/types` did not exist and the global `LayoutProps` helper was undefined. Every pull request failed the `quality` check.                                         | **Fixed.** Merged to `main` as pull request #4                         |
-| 2   | Three Dependabot pull requests (#1, #2, #3) were open and red, blocked by defect 1.                                                                                                                         | #1 and #2 auto-closed. #3 is red for a different reason — see defect 6 |
-| 6   | Dependabot #3 bundles `@types/node`, `eslint`, and `typescript` in one development-dependency group. Its TypeScript 7.0 bump fails lint with `typescript-eslint does not support TS 7.0`.                   | Blocks the last of Milestone 0 — decision needed                       |
-| 3   | `createSupabaseServerClient()` silently swallows cookie writes ([`src/lib/supabase/server.ts:20-26`](src/lib/supabase/server.ts#L20-L26)). Without a proxy that refreshes sessions, logins expire silently. | Blocks Milestone A                                                     |
-| 4   | E2E coverage is Chromium desktop only, on a product whose primary surface is an installed mobile PWA.                                                                                                       | Add a mobile viewport project in Milestone C                           |
-| 5   | No `.github/workflows` job runs against a real Supabase instance, so RLS policies will have no CI enforcement by default.                                                                                   | Must be solved inside Milestone B, not after                           |
+| #   | Issue                                                                                                                                                                                                       | Status                                                                                                                                   |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | CI ran `typecheck` before `build`, so `.next/types` did not exist and the global `LayoutProps` helper was undefined. Every pull request failed the `quality` check.                                         | **Fixed.** Merged to `main` as pull request #4                                                                                           |
+| 2   | Three Dependabot pull requests (#1, #2, #3) were open and red, blocked by defect 1.                                                                                                                         | #1 and #2 auto-closed. #3 is red for a different reason — see defect 6                                                                   |
+| 6   | Dependabot #3 bundles `@types/node`, `eslint`, and `typescript` in one development-dependency group. Its TypeScript 7.0 bump fails lint with `typescript-eslint does not support TS 7.0`.                   | Blocks the last of Milestone 0 — decision needed                                                                                         |
+| 3   | `createSupabaseServerClient()` silently swallows cookie writes ([`src/lib/supabase/server.ts:20-26`](src/lib/supabase/server.ts#L20-L26)). Without a proxy that refreshes sessions, logins expire silently. | **Fixed.** `proxy.ts` merged to `main` as pull request #6                                                                                |
+| 4   | E2E coverage is Chromium desktop only, on a product whose primary surface is an installed mobile PWA.                                                                                                       | Add a mobile viewport project in Milestone C                                                                                             |
+| 5   | No `.github/workflows` job runs against a real Supabase instance, so RLS policies will have no CI enforcement by default.                                                                                   | **Fixed.** The `database` job in `ci.yml` merged as pull request #6. Milestone B adds its policy tests to `supabase/tests/`, not the job |
 
 ---
 
@@ -125,6 +121,8 @@ generated avatars, tournaments, and social login. All already deferred in
 ---
 
 ## 4. Milestone A — Authentication
+
+**Status: done.** Merged to `main` as pull request #6.
 
 **Goal:** a real person can sign in, and the app knows who they are.
 
@@ -325,9 +323,9 @@ Not optional, and easy to forget until the day of launch.
 Milestone 0  ──▶  decisions landed as documentation (done)
    (#3 open)
                         │
-Milestone A (auth, proxy.ts, Supabase CLI, migrations)
+Milestone A (auth, proxy.ts, Supabase CLI, migrations) — done, pull request #6
                         │
-Milestone B (groups, RLS, policy-test CI job)
+Milestone B (groups, RLS policies and policy tests)
                         │
 Milestone C (matches, standings) ══ Milestone D (app shell) — in parallel
                         │
