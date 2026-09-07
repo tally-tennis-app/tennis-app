@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { signOut } from "@/app/(auth)/actions";
 import { requireUser } from "@/src/lib/auth/dal";
 
@@ -14,9 +16,12 @@ export default async function DashboardPage() {
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-5 py-16">
       <h1 className="text-2xl font-semibold">Signed in</h1>
       <p className="text-[var(--muted)]">
-        You are signed in as {user.email}. Groups, matches, and standings arrive
-        in the next milestones.
+        You are signed in as {user.email}. Matches and standings arrive in the
+        next milestones.
       </p>
+      <Link href="/groups" className="underline">
+        Your groups
+      </Link>
       <form action={signOut}>
         <button
           type="submit"

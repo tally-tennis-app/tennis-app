@@ -44,3 +44,6 @@ next-env.d.ts
 # playwright
 /playwright-report/
 /test-results/
+
+# claude code (local plugin/tool preferences)
+.claude/
