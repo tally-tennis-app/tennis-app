@@ -1,9 +1,9 @@
 # Next steps
 
 A roadmap from the current foundation to a working pilot. Written 2026-09-06 against
-commit `5886385` on `fix/ci-bootstrap`, with Milestone 0 status updated after
-pull request #4 merged, and Milestone A and B status updated after pull requests #6,
-#7 and #8 merged.
+commit `5886385` on `fix/ci-bootstrap`. Last revised 2026-09-13 against `main` at
+`2de8b5a`, after pull requests #4, #6, #7, #8, #9, #10, #12 and #13 merged. Milestones 0,
+A and B are done; Milestone C is next and nothing blocks it.
 
 Read this alongside [`docs/product-questions.md`](docs/product-questions.md), which
 records the resolved product decisions,
@@ -18,18 +18,18 @@ which fixes match immutability and derived ratings.
 
 ### What exists and works
 
-| Area         | State                                                                                                                                                                                              |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Framework    | Next.js 16.3.4, React 19.2.8, App Router, Tailwind v4, TypeScript strict                                                                                                                           |
-| Routes       | `/` landing page, `/signup`, `/login`, `/reset-password`, `/update-password`, `/auth/callback`, `/dashboard`, `/groups`, `/groups/[id]`, plus `error.tsx`, `not-found.tsx`, `manifest.webmanifest` |
-| PWA          | Manifest with standalone display and 192/512 maskable icons                                                                                                                                        |
-| Supabase     | Browser and server client factories, `@supabase/ssr`, CLI stack in `supabase/`, `profiles` and `groups` migrations with RLS, generated types committed                                             |
-| Groups       | Create, join by invite code, roster, promote/demote, remove with restore, organizer transfer, invite rotation                                                                                      |
-| Auth         | Email/password signup with confirmation, sign-in, reset, sign-out; `proxy.ts` refreshes sessions                                                                                                   |
-| Env          | `readPublicEnv()` validates presence and requires HTTPS except on loopback, so the local stack works                                                                                               |
-| Tests        | 6 Vitest files / 35 tests; 7 Playwright specs (Chromium only); 41 pgTAP policy tests across 2 files                                                                                                |
-| CI           | `quality` job: format, lint, typecheck, unit, build, e2e. `database` job: applies migrations to an empty Supabase stack and runs `supabase test db`                                                |
-| Repo process | CODEOWNERS, PR template, issue templates, Dependabot, CONTRIBUTING working agreement                                                                                                               |
+| Area         | State                                                                                                                                                                                               |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework    | Next.js 16.3.4, React 19.3.0, App Router, Tailwind v4, TypeScript 5.9 strict                                                                                                                        |
+| Routes       | `/` landing page, `/signup`, `/login`, `/reset-password`, `/update-password`, `/auth/callback`, `/dashboard`, `/groups`, `/groups/[id]`, plus `error.tsx`, `not-found.tsx`, `manifest.webmanifest`  |
+| PWA          | Manifest with standalone display and 192/512 maskable icons                                                                                                                                         |
+| Supabase     | Browser and server client factories, `@supabase/ssr`, CLI stack in `supabase/`, `profiles` and `groups` migrations with RLS, generated types committed                                              |
+| Groups       | Create, join by invite code, roster, promote/demote, remove with restore, organizer transfer, invite rotation; database errors mapped to player-facing messages in `src/lib/groups/errors.ts` (#13) |
+| Auth         | Email/password signup with confirmation, sign-in, reset, sign-out; `proxy.ts` refreshes sessions                                                                                                    |
+| Env          | `readPublicEnv()` validates presence and requires HTTPS except on loopback, so the local stack works                                                                                                |
+| Tests        | 7 Vitest files / 44 tests; 7 Playwright specs across 2 files (Chromium only); 41 pgTAP policy tests across 2 files                                                                                  |
+| CI           | `quality` job: format, lint, typecheck, unit, build, e2e. `database` job: applies migrations to an empty Supabase stack and runs `supabase test db`                                                 |
+| Repo process | CODEOWNERS, PR template, issue templates, Dependabot, CONTRIBUTING working agreement                                                                                                                |
 
 ### What does not exist yet
 
@@ -46,15 +46,17 @@ landing page promises still does not:
 
 ### Known defects and gaps in what does exist
 
-| #   | Issue                                                                                                                                                                                                       | Status                                                                                                                                   |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | CI ran `typecheck` before `build`, so `.next/types` did not exist and the global `LayoutProps` helper was undefined. Every pull request failed the `quality` check.                                         | **Fixed.** Merged to `main` as pull request #4                                                                                           |
-| 2   | Three Dependabot pull requests (#1, #2, #3) were open and red, blocked by defect 1.                                                                                                                         | #1 and #2 auto-closed. #3 is red for a different reason — see defect 6                                                                   |
-| 6   | Dependabot #3 bundles `@types/node`, `eslint`, and `typescript` in one development-dependency group. Its TypeScript 7.0 bump fails lint with `typescript-eslint does not support TS 7.0`.                   | Blocks the last of Milestone 0 — decision needed                                                                                         |
-| 3   | `createSupabaseServerClient()` silently swallows cookie writes ([`src/lib/supabase/server.ts:20-26`](src/lib/supabase/server.ts#L20-L26)). Without a proxy that refreshes sessions, logins expire silently. | **Fixed.** `proxy.ts` merged to `main` as pull request #6                                                                                |
-| 4   | E2E coverage is Chromium desktop only, on a product whose primary surface is an installed mobile PWA.                                                                                                       | Add a mobile viewport project in Milestone C                                                                                             |
-| 7   | A removed member could rejoin with the invite code they already knew, silently undoing the removal. Found by clicking through the app, not by any test.                                                     | **Fixed** in pull request #8 (`removed_by`)                                                                                              |
-| 5   | No `.github/workflows` job runs against a real Supabase instance, so RLS policies will have no CI enforcement by default.                                                                                   | **Fixed.** The `database` job in `ci.yml` merged as pull request #6. Milestone B adds its policy tests to `supabase/tests/`, not the job |
+| #   | Issue                                                                                                                                                                                                                                                                                                                         | Status                                                                                                                                   |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | CI ran `typecheck` before `build`, so `.next/types` did not exist and the global `LayoutProps` helper was undefined. Every pull request failed the `quality` check.                                                                                                                                                           | **Fixed.** Merged to `main` as pull request #4                                                                                           |
+| 2   | Three Dependabot pull requests (#1, #2, #3) were open and red, blocked by defect 1.                                                                                                                                                                                                                                           | **Resolved.** #1 and #2 auto-closed; #3 superseded by the regrouping in #12                                                              |
+| 6   | Dependabot bundled `@types/node`, `eslint`, and `typescript` in one development-dependency group, so a TypeScript bump no tool could accept held every unrelated update hostage.                                                                                                                                              | **Fixed** in pull request #12. TypeScript now arrives alone; `@types/node` majors are pinned to the runtime                              |
+| 3   | `createSupabaseServerClient()` silently swallows cookie writes ([`src/lib/supabase/server.ts:20-26`](src/lib/supabase/server.ts#L20-L26)). Without a proxy that refreshes sessions, logins expire silently.                                                                                                                   | **Fixed.** `proxy.ts` merged to `main` as pull request #6                                                                                |
+| 4   | E2E coverage is Chromium desktop only, on a product whose primary surface is an installed mobile PWA.                                                                                                                                                                                                                         | Add a mobile viewport project in Milestone C                                                                                             |
+| 7   | A removed member could rejoin with the invite code they already knew, silently undoing the removal. Found by clicking through the app, not by any test.                                                                                                                                                                       | **Fixed** in pull request #8 (`removed_by`)                                                                                              |
+| 5   | No `.github/workflows` job runs against a real Supabase instance, so RLS policies will have no CI enforcement by default.                                                                                                                                                                                                     | **Fixed.** The `database` job in `ci.yml` merged as pull request #6. Milestone B adds its policy tests to `supabase/tests/`, not the job |
+| 8   | `eslint-config-next` vendors its own `typescript-eslint` and `eslint-plugin-react`, which caps two dev dependencies. ESLint 10 removed `context.getFilename()`, which `eslint-plugin-react` still calls, so every rule in it throws on load. TypeScript 7.0 is refused outright by `typescript-eslint`, which targets >= 7.1. | **Open.** Dependabot #14 is red for the ESLint half right now. See §3                                                                    |
+| 9   | This working copy lives under `~/Desktop`, which iCloud Drive syncs. iCloud resolves conflicts by writing `name 2.ext` duplicates, and duplicates landing in `.next/types/` break `typecheck` locally with `Duplicate identifier 'LayoutProps'`. CI is unaffected — it checks out clean.                                      | **Open, local only.** `rm -rf .next` clears it; moving the repo off the synced path fixes it                                             |
 
 ---
 
@@ -96,31 +98,42 @@ generated avatars, tournaments, and social login. All already deferred in
 
 **Goal:** a green `main` and an empty pull request queue.
 
-**Mostly done.** `main` carries the CI fix and its last three runs are green.
+**Done, with one standing caveat.** `main` is green and every pull request opened so far
+has been merged or deliberately closed.
 
 1. ~~Merge `fix/ci-bootstrap`.~~ Landed as pull request #4. `typecheck` now runs
    `next typegen && tsc --noEmit`, the pattern Next 16 documents for type-checking route
    types in CI without a full build.
 2. ~~Merge or close Dependabot #1 and #2.~~ Both auto-closed once the `actions/checkout`
    and `actions/setup-node` v7 bumps landed, exactly as expected.
-3. **Dependabot #3 remains open and red**, but not because of defect 1. It fails lint with
-   `typescript-eslint does not support TS 7.0`. This is a real upstream incompatibility
-   introduced by the pull request's own TypeScript bump, so rebasing will not fix it.
+3. ~~Decide what to do about the grouped development-dependency bump.~~ Resolved by
+   pull request #12, which took the split: TypeScript is excluded from the
+   `development-dependencies` group and arrives as its own pull request, and
+   `@types/node` majors are ignored so they track the Node runtime in `.nvmrc` rather
+   than the newest Node release. Pull requests #3 and #11 were closed as superseded.
 
-   Two ways out, and this is a decision rather than a chore:
+### The standing caveat: the `eslint-config-next` ceiling
 
-   - **Split TypeScript out of the development-dependency group** in
-     `.github/dependabot.yml`, merge the `@types/node` and `eslint` bumps now, and let
-     TypeScript arrive as its own pull request that stays red until typescript-eslint
-     ships support. Keeps the other updates flowing.
-   - **Hold #3 entirely** until typescript-eslint supports TypeScript 7.0, accepting that
-     `@types/node` and `eslint` sit stale behind it.
+Two development dependencies cannot be upgraded, and neither is our code's fault.
+`eslint-config-next@16.3.4` vendors its own copies of `typescript-eslint` and
+`eslint-plugin-react`, so their compatibility is what actually binds:
 
-   Prefer the split. A grouped pull request that can never go green blocks unrelated
-   updates indefinitely, and the group exists to reduce noise, not to couple upgrades that
-   have different readiness dates.
+| Dependency   | Held at | Why                                                                                                                                                                                                                                  | Clears when                                                               |
+| ------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| `eslint`     | 9.x     | ESLint 10 removed `context.getFilename()`, which `eslint-plugin-react` still calls. Every rule in that plugin throws on load, so `npm run lint` exits 2 before linting anything.                                                     | `eslint-config-next` ships a release with a patched `eslint-plugin-react` |
+| `typescript` | 5.x     | `typescript-eslint` refuses to load against TypeScript 7.0 and targets >= 7.1 ([typescript-eslint#10940](https://github.com/typescript-eslint/typescript-eslint/issues/10940)). TypeScript 6 is supported and is the safe next step. | typescript-eslint ships TS >= 7.1 support                                 |
 
-**Done when:** `main` is green and no pull request is open.
+**Dependabot #14 is open and red for the ESLint half of this.** The split in #12 stopped
+TypeScript blocking the group, but nothing yet stops ESLint doing the same thing, so the
+development-dependency group will keep proposing ESLint 10 and keep failing weekly.
+
+The fix is an `ignore` entry for `eslint` at `10.x` in `.github/dependabot.yml`, matching
+the treatment `@types/node` already has. Scope it to the major that is actually broken
+rather than to `>= 10`, so the upgrade flows the moment upstream is ready. Take the
+`@types/node` and `supabase` bumps in #14 on their own.
+
+**Done when:** `main` is green and no pull request is open. `main` is green; #14 is the
+one open pull request.
 
 ---
 
@@ -340,7 +353,7 @@ Not optional, and easy to forget until the day of launch.
 
 ```
 Milestone 0  ──▶  decisions landed as documentation (done)
-   (#3 open)
+   (done, #14 open)
                         │
 Milestone A (auth, proxy.ts, Supabase CLI, migrations) — done, pull request #6
                         │
@@ -352,6 +365,10 @@ Milestone E (ratings)
                         │
 Milestone F (pilot readiness)
 ```
+
+**Milestone C is the current edge.** Nothing blocks it: the decisions are recorded, the
+membership predicate it needs exists, and the `database` job will enforce its policy
+tests the day they are written.
 
 The critical path is A → B → C. Milestone C must carry `confirmed_at` and `voided_at`
 from its first migration even though Milestone E is late — the rating fold depends on
@@ -373,6 +390,8 @@ delivery pressure.
   `NEXT_PUBLIC_` prefix.
 - Run the full local gate before requesting review: `format:check`, `lint`, `typecheck`,
   `test`, `build`, plus `test:e2e` when routes, metadata, the manifest, or visible UI change.
+- A local `typecheck` failure naming `LayoutProps` or a `.d 2.ts` file is defect 9, not a
+  type error. Run `rm -rf .next` and re-run before chasing it.
 - This Next.js version differs from what most published guides and training data assume.
   Check `node_modules/next/dist/docs/` before writing against a remembered API — the
   `middleware` to `proxy` rename in Milestone A is exactly this trap.
