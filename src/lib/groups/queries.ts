@@ -15,6 +15,7 @@ export type GroupMember = {
   role: string;
   joinedAt: string;
   leftAt: string | null;
+  wasRemoved: boolean;
 };
 
 export type GroupDetail = {
@@ -79,7 +80,11 @@ export const getGroup = cache(
 
     const { data: memberRows, error: memberError } = await supabase
       .from("group_members")
-      .select("user_id, role, joined_at, left_at, profiles(display_name)")
+      // removed_by adds a second foreign key to profiles, so the embed has to
+      // name which relationship it means.
+      .select(
+        "user_id, role, joined_at, left_at, removed_by, profiles!group_members_user_id_fkey(display_name)",
+      )
       .eq("group_id", groupId);
 
     if (memberError) throw memberError;
@@ -91,6 +96,7 @@ export const getGroup = cache(
         role: row.role,
         joinedAt: row.joined_at,
         leftAt: row.left_at,
+        wasRemoved: row.removed_by !== null,
       }))
       // Active first, then organizers, then by name.
       .sort(
