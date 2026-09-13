@@ -5,22 +5,12 @@ import { redirect } from "next/navigation";
 
 import type { GroupFormState } from "@/app/groups/form-state";
 import { requireUser } from "@/src/lib/auth/dal";
+import { userFacingMessage } from "@/src/lib/groups/errors";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
 
 function field(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === "string" ? value.trim() : "";
-}
-
-/**
- * The database raises for every authorization failure, so the message it
- * returns is the one written in the migration and is safe to show. Anything
- * unexpected is reported generically rather than leaking a Postgres detail.
- */
-function messageFor(error: { message: string; code?: string }): string {
-  return error.code === "P0001" || error.message
-    ? error.message
-    : "Something went wrong. Try again.";
 }
 
 export async function createGroup(
@@ -34,13 +24,19 @@ export async function createGroup(
     return { error: "Give the group a name." };
   }
 
+  // Mirrors the groups_name_length constraint. The form's maxLength is not a
+  // guarantee, and the constraint's own error is reported generically.
+  if (name.length > 60) {
+    return { error: "Keep the group name to 60 characters or fewer." };
+  }
+
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.rpc("create_group", {
     group_name: name,
   });
 
   if (error) {
-    return { error: messageFor(error) };
+    return { error: userFacingMessage(error) };
   }
 
   redirect(`/groups/${data}`);
@@ -61,7 +57,7 @@ export async function joinGroup(
   const { data, error } = await supabase.rpc("join_group_by_code", { code });
 
   if (error) {
-    return { error: messageFor(error) };
+    return { error: userFacingMessage(error) };
   }
 
   redirect(`/groups/${data}`);
@@ -82,7 +78,9 @@ export async function leaveGroup(formData: FormData): Promise<void> {
   });
 
   if (error) {
-    redirect(`/groups/${groupId}?error=${encodeURIComponent(error.message)}`);
+    redirect(
+      `/groups/${groupId}?error=${encodeURIComponent(userFacingMessage(error))}`,
+    );
   }
 
   redirect("/groups");
@@ -99,7 +97,9 @@ export async function removeMember(formData: FormData): Promise<void> {
   });
 
   if (error) {
-    redirect(`/groups/${groupId}?error=${encodeURIComponent(error.message)}`);
+    redirect(
+      `/groups/${groupId}?error=${encodeURIComponent(userFacingMessage(error))}`,
+    );
   }
 
   revalidatePath(`/groups/${groupId}`);
@@ -117,7 +117,9 @@ export async function setMemberRole(formData: FormData): Promise<void> {
   });
 
   if (error) {
-    redirect(`/groups/${groupId}?error=${encodeURIComponent(error.message)}`);
+    redirect(
+      `/groups/${groupId}?error=${encodeURIComponent(userFacingMessage(error))}`,
+    );
   }
 
   revalidatePath(`/groups/${groupId}`);
@@ -133,7 +135,9 @@ export async function rotateInvite(formData: FormData): Promise<void> {
   });
 
   if (error) {
-    redirect(`/groups/${groupId}?error=${encodeURIComponent(error.message)}`);
+    redirect(
+      `/groups/${groupId}?error=${encodeURIComponent(userFacingMessage(error))}`,
+    );
   }
 
   revalidatePath(`/groups/${groupId}`);
