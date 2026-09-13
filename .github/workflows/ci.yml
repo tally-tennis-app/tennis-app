@@ -92,7 +92,7 @@ jobs:
         run: npx supabase gen types typescript --local > database.types.generated.ts
 
       - name: Upload database types
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: database-types
           path: database.types.generated.ts
