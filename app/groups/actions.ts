@@ -105,6 +105,23 @@ export async function removeMember(formData: FormData): Promise<void> {
   revalidatePath(`/groups/${groupId}`);
 }
 
+export async function restoreMember(formData: FormData): Promise<void> {
+  await requireUser();
+  const groupId = field(formData, "groupId");
+  const supabase = await createSupabaseServerClient();
+
+  const { error } = await supabase.rpc("restore_group_member", {
+    target_group: groupId,
+    target_user: field(formData, "userId"),
+  });
+
+  if (error) {
+    redirect(`/groups/${groupId}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath(`/groups/${groupId}`);
+}
+
 export async function setMemberRole(formData: FormData): Promise<void> {
   await requireUser();
   const groupId = field(formData, "groupId");

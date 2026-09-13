@@ -6,7 +6,7 @@
 
 begin;
 
-select plan(26);
+select plan(32);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
                         email_confirmed_at, created_at, updated_at,
@@ -171,6 +171,54 @@ select is(
   'a direct update cannot change a member''s role'
 );
 
+-- ------------------------------------------------- Removal has to actually stick
+--
+-- Regression test. Removal used to clear left_at on any rejoin, so a removed
+-- member walked straight back in with the code they already knew and the
+-- removal silently undid itself.
+
+set local request.jwt.claims to
+  '{"sub": "11111111-1111-1111-1111-111111111111", "role": "authenticated"}';
+
+select lives_ok(
+  format('select public.remove_group_member(%L, %L)',
+         (select g1 from ctx), '22222222-2222-2222-2222-222222222222'),
+  'an organizer can remove a member'
+);
+
+set local request.jwt.claims to
+  '{"sub": "22222222-2222-2222-2222-222222222222", "role": "authenticated"}';
+
+select throws_ok(
+  format('select public.join_group_by_code(%L)', (select code1 from ctx)),
+  '42501',
+  'An organizer removed you from that group',
+  'a removed member cannot rejoin with the code they already know'
+);
+
+select is(
+  (select count(*)::int from public.groups where id = (select g1 from ctx)),
+  0,
+  'a removed member loses read access immediately'
+);
+
+set local request.jwt.claims to
+  '{"sub": "11111111-1111-1111-1111-111111111111", "role": "authenticated"}';
+
+select lives_ok(
+  format('select public.restore_group_member(%L, %L)',
+         (select g1 from ctx), '22222222-2222-2222-2222-222222222222'),
+  'an organizer can undo an accidental removal'
+);
+
+select is(
+  (select removed_by from public.group_members
+   where group_id = (select g1 from ctx)
+     and user_id = '22222222-2222-2222-2222-222222222222'),
+  null,
+  'restoring clears the removal marker'
+);
+
 -- --------------------------------------------------------- Invite code expiry
 
 reset role;
@@ -239,6 +287,15 @@ select lives_ok(
 select lives_ok(
   format('select public.leave_group(%L)', (select g1 from ctx)),
   'the outgoing organizer can leave once a successor exists'
+);
+
+-- Leaving is not removal: it carries no removed_by, so the code still works.
+select is(
+  (select removed_by from public.group_members
+   where group_id = (select g1 from ctx)
+     and user_id = '11111111-1111-1111-1111-111111111111'),
+  null,
+  'leaving voluntarily does not mark the member as removed'
 );
 
 -- Decision D18: the row stays so the group history survives.
