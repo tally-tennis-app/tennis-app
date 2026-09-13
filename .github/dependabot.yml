@@ -9,6 +9,18 @@ updates:
         dependency-type: production
       development-dependencies:
         dependency-type: development
+    # Both of these are blocked on eslint-config-next, which vendors its own
+    # copies of typescript-eslint and eslint-plugin-react. Delete each entry
+    # once eslint-config-next ships a release whose vendored copy supports it.
+    ignore:
+      # typescript-eslint refuses to load against TS 7.0 and targets >= 7.1.
+      # https://github.com/typescript-eslint/typescript-eslint/issues/10940
+      - dependency-name: typescript
+        versions: ["7.0.x"]
+      # ESLint 10 removed context.getFilename(), which eslint-plugin-react
+      # still calls, so every rule in that plugin throws on load.
+      - dependency-name: eslint
+        versions: ["10.x"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
