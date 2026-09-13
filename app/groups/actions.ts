@@ -116,7 +116,9 @@ export async function restoreMember(formData: FormData): Promise<void> {
   });
 
   if (error) {
-    redirect(`/groups/${groupId}?error=${encodeURIComponent(error.message)}`);
+    redirect(
+      `/groups/${groupId}?error=${encodeURIComponent(userFacingMessage(error))}`,
+    );
   }
 
   revalidatePath(`/groups/${groupId}`);
