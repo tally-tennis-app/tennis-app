@@ -27,6 +27,13 @@ updates:
       - dependency-name: "eslint"
         versions:
           - "10.x"
+      # typescript-eslint, vendored inside eslint-config-next, refuses to load
+      # against TypeScript 7.0 and targets >= 7.1, so `npm run lint` exits before
+      # linting anything. Scoped to 7.0.x so 6.x and 7.1+ are still proposed.
+      # https://github.com/typescript-eslint/typescript-eslint/issues/10940
+      - dependency-name: "typescript"
+        versions:
+          - "7.0.x"
   - package-ecosystem: github-actions
     directory: /
     schedule:
