@@ -7,8 +7,18 @@ updates:
     groups:
       production-dependencies:
         dependency-type: production
+      # TypeScript arrives as its own pull request. Its majors wait on
+      # typescript-eslint support, and grouping it blocks every other update.
       development-dependencies:
         dependency-type: development
+        exclude-patterns:
+          - typescript
+    ignore:
+      # Types track the Node runtime in .nvmrc and package.json engines, not the
+      # newest Node release. Bump this major by hand with the runtime.
+      - dependency-name: "@types/node"
+        update-types:
+          - version-update:semver-major
   - package-ecosystem: github-actions
     directory: /
     schedule:
