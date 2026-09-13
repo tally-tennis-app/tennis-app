@@ -19,6 +19,14 @@ updates:
       - dependency-name: "@types/node"
         update-types:
           - version-update:semver-major
+      # ESLint 10 removed context.getFilename(). eslint-plugin-react, vendored
+      # inside eslint-config-next, still calls it, so every rule in that plugin
+      # throws on load and `npm run lint` exits before linting anything. Scoped
+      # to the broken major so 11.x is proposed normally; delete this once
+      # eslint-config-next ships a patched eslint-plugin-react.
+      - dependency-name: "eslint"
+        versions:
+          - "10.x"
   - package-ecosystem: github-actions
     directory: /
     schedule:
