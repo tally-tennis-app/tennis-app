@@ -3,10 +3,10 @@
 The pilot uses two independent Supabase Cloud projects in the
 `tally-tennis-app` organization:
 
-| Environment | Supabase project                             | Application deployment   |
-| ----------- | -------------------------------------------- | ------------------------ |
-| Preview     | `tennis-preview` (`ubbsiozrhpypjlsztwxk`)    | Pull-request previews    |
-| Production  | `tennis-production` (`ryowfnsbwdyrqpxsyvfp`) | Production branch/domain |
+| Environment | Supabase project                             | Application deployment                              |
+| ----------- | -------------------------------------------- | --------------------------------------------------- |
+| Preview     | `tennis-preview` (`ubbsiozrhpypjlsztwxk`)    | Pending Vercel GitHub integration and first preview |
+| Production  | `tennis-production` (`ryowfnsbwdyrqpxsyvfp`) | <https://tennis-app-vert.vercel.app>                |
 
 Local Supabase is test data only. Preview must never connect to production, and
 production must never use a loopback URL.
@@ -45,6 +45,20 @@ password manager and never use a `NEXT_PUBLIC_` prefix.
 7. Repeat migration dry-run, push, advisors, Auth URL configuration, and smoke
    checks against production. Use only production variables in the production
    deployment.
+
+## Current deployment state
+
+The Vercel project is `max-be74/tennis-app`. Its Preview and Production scopes
+contain independent Supabase URLs and publishable keys. The first deployment of
+commit `5473e15` established the production alias and passed signed-out route,
+manifest, Supabase REST, and Supabase Auth endpoint checks on 2026-09-14.
+
+Vercel could not connect the GitHub repository because its GitHub app does not
+currently have access to `tally-tennis-app/tennis-app`. Grant that repository to
+the Vercel GitHub app, connect it to the project, and create the first pull-request
+preview before completing the authenticated preview smoke test. After pull
+request #20 merges, deploy the merge commit to production and repeat the smoke
+test; do not treat the initial branch deployment as the final pilot release.
 
 Supabase recommends separate local, staging, and production environments:
 [Managing environments](https://supabase.com/docs/guides/deployment/managing-environments).

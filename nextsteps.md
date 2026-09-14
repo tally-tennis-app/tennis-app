@@ -30,8 +30,8 @@ which fixes match immutability and derived ratings.
 
 ### Remaining launch prerequisites
 
-- Connect the repository to a deployment host, configure scoped environment variables,
-  and complete preview and production smoke tests.
+- Grant the Vercel GitHub app access to this organization repository, create the first
+  pull-request preview, and complete authenticated preview and production smoke tests.
 - Complete the final frontend design pass and installed-PWA checks on physical iOS and
   Android devices.
 
@@ -328,7 +328,7 @@ Runs alongside C rather than after it.
 
 ## 9. Milestone F — Pilot readiness
 
-**Status: cloud databases provisioned; application deployment remains.**
+**Status: cloud databases and initial Vercel production deployment provisioned.**
 
 - The scripted synthetic backup/restore drill compares content, schema, security metadata,
   ratings, and restored policy tests in two isolated databases.
@@ -340,6 +340,10 @@ Runs alongside C rather than after it.
 - Separate preview and production Supabase Cloud projects were created and migrated on
   2026-09-14. Cloud recovery rehearsal, deployment smoke tests, and physical devices
   remain external launch steps.
+- Vercel has independent Preview and Production environment values. The initial branch
+  deployment is live at `https://tennis-app-vert.vercel.app`; GitHub integration, the
+  first pull-request preview, authenticated smoke checks, and a post-merge production
+  deployment remain.
 
 ---
 
@@ -356,12 +360,13 @@ Milestone C (matches, standings) ══ Milestone D (functional shell) — imple
                         │
 Milestone E (ratings) — implemented
                         │
-Milestone F (cloud databases ready; application deployment pending)
+Milestone F (cloud databases and initial Vercel deployment ready)
 ```
 
-The current edge is application rollout: deploy the reviewed commit with independently
-scoped preview and production variables, configure Auth URLs, and run the documented
-smoke and device checks. No real pilot data belongs in the local test stack.
+The current edge is application rollout: grant the Vercel GitHub app repository access,
+create and validate the preview, obtain the required review, merge #20, redeploy the merge
+commit, and run the authenticated smoke and device checks. No real pilot data belongs in
+the local test stack.
 
 ---
 
