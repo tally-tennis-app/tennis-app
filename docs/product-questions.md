@@ -60,9 +60,10 @@ reasoning behind the rating and immutability decisions lives in
 
 ## Environments
 
-- One Supabase project serves previews and production for now. This is a deliberate,
-  time-limited tradeoff with a revisit trigger in ADR 0002. While it stands, no seeded or
-  destructive end-to-end tests run against the shared project.
+- The pilot uses separate Supabase Cloud projects for preview and production. This
+  supersedes the temporary shared-project allowance in ADR 0002; see
+  [ADR 0003](decisions/0003-separate-cloud-environments.md). Seeded and destructive
+  end-to-end tests remain local-only.
 
 ## Still deferred
 

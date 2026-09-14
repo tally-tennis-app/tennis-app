@@ -85,17 +85,28 @@ jobs:
       - name: Run Row Level Security policy tests
         run: npx supabase test db
 
-      # This machine has no container runtime, so the generated types are
-      # produced here and downloaded to be committed. Once committed, this step
-      # doubles as the schema-drift alarm: regenerate and diff.
+      - name: Test overlapping database transactions
+        env:
+          SUPABASE_TEST_CONTAINER: supabase_db_TennisApp
+        run: python3 supabase/tests/concurrency/run.py
+
+      # Regeneration must match the committed application contract.
       - name: Generate database types
-        run: npx supabase gen types typescript --local > database.types.generated.ts
+        run: |
+          npx supabase gen types typescript --local > database.types.generated.ts
+          diff -u src/lib/supabase/database.types.ts database.types.generated.ts
 
       - name: Upload database types
         uses: actions/upload-artifact@v7
         with:
           name: database-types
           path: database.types.generated.ts
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Test real desktop and mobile match flows
+        run: python3 scripts/test-local-e2e.py
 
       - name: Stop Supabase
         if: always()

@@ -1,12 +1,12 @@
 # Tennis App
 
-An online-first tennis community app for logging verified match scores, deriving fair standings, and coordinating the next match. The current repository is the application foundation; authentication, groups, matches, ratings, and tournaments have not been implemented yet.
+An online-first tennis community app for private groups, opponent-confirmed match scores, standings, and derived global and group Elo ratings.
 
 ## Prerequisites
 
 - Node.js 24 LTS (`nvm use` reads the committed `.nvmrc`)
 - npm 11 or newer
-- A Supabase project when working on data-backed features
+- Supabase CLI plus a container runtime for local data-backed work
 
 ## Local setup
 
@@ -19,22 +19,24 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Replace the example values in `.env.local` with the development project's browser-safe Supabase URL and publishable key. Never commit `.env.local`, service-role keys, database passwords, or access tokens.
+Start the local Supabase stack and place its browser-safe URL and publishable key in `.env.local`. Never commit `.env.local`, secret/service-role keys, database passwords, or access tokens.
 
-Open [http://localhost:3000](http://localhost:3000). The current landing page does not contact Supabase, so it can be previewed before credentials are added.
+Open [http://localhost:3000](http://localhost:3000). Authenticated screens require the configured database.
 
 ## Commands
 
-| Command                | Purpose                                 |
-| ---------------------- | --------------------------------------- |
-| `npm run dev`          | Start the Next.js development server    |
-| `npm run build`        | Produce a production build              |
-| `npm run start`        | Serve the production build              |
-| `npm run format:check` | Verify Prettier formatting              |
-| `npm run lint`         | Run ESLint                              |
-| `npm run typecheck`    | Check TypeScript without emitting files |
-| `npm test`             | Run unit and component tests once       |
-| `npm run test:e2e`     | Run the Chromium foundation smoke test  |
+| Command                    | Purpose                                  |
+| -------------------------- | ---------------------------------------- |
+| `npm run dev`              | Start the Next.js development server     |
+| `npm run build`            | Produce a production build               |
+| `npm run start`            | Serve the production build               |
+| `npm run format:check`     | Verify Prettier formatting               |
+| `npm run lint`             | Run ESLint                               |
+| `npm run typecheck`        | Check TypeScript without emitting files  |
+| `npm test`                 | Run unit and component tests once        |
+| `npm run test:e2e`         | Run desktop/mobile browser smoke tests   |
+| `npm run db:test`          | Run database policy and validation tests |
+| `npm run db:restore-drill` | Verify a disposable backup and restore   |
 
 Install the Playwright browser once before the first local end-to-end run:
 
@@ -54,10 +56,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the complete working agreement.
 
 ## Environments and deployment
 
-- Pull requests receive Vercel preview deployments.
-- `main` deploys to production.
-- Previews and production share one Supabase project. This is a deliberate, time-limited tradeoff recorded in [ADR 0002](docs/decisions/0002-match-immutability-and-derived-ratings.md); no seeded or destructive end-to-end test may run against it, and it must be split before anyone outside the pilot group is onboarded.
+- Pull requests use the preview deployment and `tennis-preview` Supabase Cloud project.
+- `main` uses the production deployment and independent `tennis-production` project.
 - The only browser-exposed values are `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+
+See [cloud environments](docs/operations/environments.md), [deployment and rollback](docs/operations/deploy-rollback.md), and [backup verification](docs/operations/backup-restore.md).
 
 ## Install as a desktop app
 
@@ -67,7 +70,7 @@ Native installers are intentionally deferred. See [the desktop decision record](
 
 ## Product boundaries
 
-This foundation contains no database schema, authentication flow, score parsing, Elo calculation, scheduling, tournament engine, push notifications, or offline synchronization. The product decisions that precede those features are resolved and recorded in [docs/product-questions.md](docs/product-questions.md), with the reasoning behind match immutability and derived ratings in [ADR 0002](docs/decisions/0002-match-immutability-and-derived-ratings.md). The build order is in [nextsteps.md](nextsteps.md).
+The pilot includes authentication, groups, verified singles matches, standings, and derived Elo. Scheduling, tournaments, push notifications, doubles, and offline synchronization remain outside the pilot. Product decisions are recorded in [docs/product-questions.md](docs/product-questions.md), with match immutability and ratings in [ADR 0002](docs/decisions/0002-match-immutability-and-derived-ratings.md). Current delivery status is in [nextsteps.md](nextsteps.md).
 
 ## License
 

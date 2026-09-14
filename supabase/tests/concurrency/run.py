@@ -29,7 +29,15 @@ def sql(query):
 
 class Session:
     def __init__(self, actor, name):
-        self.proc = subprocess.Popen(['docker','exec','-i',CONTAINER,'psql','-X','-qAt','-U','postgres'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+        # Merge psql stderr into stdout inside the container. Docker transports
+        # its stdout/stderr streams independently and may otherwise deliver the
+        # \echo marker before the SQL error that preceded it.
+        self.proc = subprocess.Popen(
+            ['docker', 'exec', '-i', CONTAINER, 'sh', '-c',
+             'exec psql -X -qAt -U postgres 2>&1'],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, text=True, bufsize=1,
+        )
         self.name = name
         self.query(f"set application_name='{name}'; begin; set local role authenticated; set local request.jwt.claims='{{\"sub\":\"{actor}\",\"role\":\"authenticated\"}}';")
     def query(self, query):
