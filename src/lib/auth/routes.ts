@@ -11,6 +11,7 @@ export const authPages = ["/login", "/signup", "/reset-password"] as const;
 /** Pages reachable without a session. */
 const publicPages = new Set<string>([
   "/",
+  "/welcome",
   ...authPages,
   "/auth/callback",
   "/auth/confirm",

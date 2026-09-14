@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import Home from "@/app/page";
+import Home from "@/app/welcome/page";
 
 describe("Home", () => {
   it("introduces the score-led tennis community", () => {
@@ -13,7 +13,7 @@ describe("Home", () => {
         name: "Your court. Your crew. Every score counts.",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Foundation in progress")).toBeInTheDocument();
+    expect(screen.getByText("Private tennis groups")).toBeInTheDocument();
     expect(
       screen.getByText(/Log verified matches, follow fair standings/i),
     ).toBeInTheDocument();
