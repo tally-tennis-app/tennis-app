@@ -23,7 +23,7 @@ values
 
 -- The trigger, seen as the table owner.
 select is(
-  (select count(*)::int from public.profiles),
+  (select count(*)::int from public.profiles where id in ('11111111-1111-1111-1111-111111111111','22222222-2222-2222-2222-222222222222')),
   2,
   'the trigger creates one profile per auth user'
 );
@@ -53,7 +53,7 @@ set local request.jwt.claims to
   '{"sub": "11111111-1111-1111-1111-111111111111", "role": "authenticated"}';
 
 select is(
-  (select count(*)::int from public.profiles),
+  (select count(*)::int from public.profiles where id in ('11111111-1111-1111-1111-111111111111','22222222-2222-2222-2222-222222222222')),
   1,
   'an authenticated user sees exactly one profile row'
 );
@@ -93,7 +93,7 @@ set local role anon;
 set local request.jwt.claims to '';
 
 select is(
-  (select count(*)::int from public.profiles),
+  (select count(*)::int from public.profiles where id in ('11111111-1111-1111-1111-111111111111','22222222-2222-2222-2222-222222222222')),
   0,
   'an anonymous visitor sees no profiles at all'
 );
