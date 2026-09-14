@@ -1,3 +1,4 @@
+import { AppNav } from "@/app/_components/app-nav";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -26,136 +27,170 @@ export default async function GroupPage({
   const departed = group.members.filter((member) => member.leftAt);
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-5 py-12">
-      <div className="flex flex-col gap-1">
-        <Link href="/groups" className="text-sm text-[var(--muted)] underline">
-          All groups
-        </Link>
-        <h1 className="text-2xl font-semibold">{group.name}</h1>
-      </div>
+    <>
+      <AppNav />
+      <main
+        id="main-content"
+        className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-5 py-12"
+      >
+        <div className="flex flex-col gap-1">
+          <Link
+            href="/groups"
+            className="text-sm text-[var(--muted)] underline"
+          >
+            All groups
+          </Link>
+          <h1 className="text-2xl font-semibold">{group.name}</h1>
+          <nav aria-label="Group" className="flex gap-5">
+            <Link className="underline" href={`/groups/${id}/matches`}>
+              Matches
+            </Link>
+            <Link className="underline" href={`/groups/${id}/matches/new`}>
+              Submit a match
+            </Link>
+            <Link className="underline" href={`/groups/${id}/standings`}>
+              Standings
+            </Link>
+          </nav>
+        </div>
 
-      {typeof error === "string" ? (
-        <p role="alert" className="text-sm text-[var(--clay)]">
-          {error}
-        </p>
-      ) : null}
-
-      <section className="flex flex-col gap-2 rounded border border-[var(--line)] p-4">
-        <h2 className="text-lg font-semibold">Invite code</h2>
-        <p className="font-mono text-xl tracking-widest">{group.inviteCode}</p>
-        <p className="text-sm text-[var(--muted)]">
-          Expires {new Date(group.inviteExpiresAt).toLocaleDateString()}. Any
-          member can share this code; an organizer can rotate it to revoke it.
-        </p>
-        {group.viewerIsOrganizer ? (
-          <form action={rotateInvite}>
-            <input type="hidden" name="groupId" value={group.id} />
-            <button
-              type="submit"
-              className="rounded border border-[var(--line)] px-3 py-1.5 text-sm font-medium"
-            >
-              Rotate code
-            </button>
-          </form>
-        ) : null}
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">Members</h2>
-        <ul className="flex flex-col gap-2">
-          {active.map((member) => (
-            <li
-              key={member.userId}
-              className="flex flex-wrap items-center justify-between gap-2 rounded border border-[var(--line)] px-4 py-3"
-            >
-              <span>
-                <span className="font-medium">{member.displayName}</span>{" "}
-                <span className="text-sm text-[var(--muted)]">
-                  {member.role}
-                </span>
-              </span>
-              {group.viewerIsOrganizer && member.userId !== group.viewerId ? (
-                <span className="flex gap-2">
-                  <form action={setMemberRole}>
-                    <input type="hidden" name="groupId" value={group.id} />
-                    <input type="hidden" name="userId" value={member.userId} />
-                    <input
-                      type="hidden"
-                      name="role"
-                      value={
-                        member.role === "organizer" ? "player" : "organizer"
-                      }
-                    />
-                    <button
-                      type="submit"
-                      className="rounded border border-[var(--line)] px-3 py-1.5 text-sm"
-                    >
-                      {member.role === "organizer" ? "Demote" : "Promote"}
-                    </button>
-                  </form>
-                  <form action={removeMember}>
-                    <input type="hidden" name="groupId" value={group.id} />
-                    <input type="hidden" name="userId" value={member.userId} />
-                    <button
-                      type="submit"
-                      className="rounded border border-[var(--line)] px-3 py-1.5 text-sm text-[var(--clay)]"
-                    >
-                      Remove
-                    </button>
-                  </form>
-                </span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {departed.length > 0 ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-semibold">Former members</h2>
-          <p className="text-sm text-[var(--muted)]">
-            Their results stay in the group history. Someone an organizer
-            removed cannot rejoin with the invite code.
+        {typeof error === "string" ? (
+          <p role="alert" className="text-sm text-[var(--clay)]">
+            {error}
           </p>
+        ) : null}
+
+        <section className="flex flex-col gap-2 rounded border border-[var(--line)] p-4">
+          <h2 className="text-lg font-semibold">Invite code</h2>
+          <p className="font-mono text-xl tracking-widest">
+            {group.inviteCode}
+          </p>
+          <p className="text-sm text-[var(--muted)]">
+            Expires {new Date(group.inviteExpiresAt).toLocaleDateString()}. Any
+            member can share this code; an organizer can rotate it to revoke it.
+          </p>
+          {group.viewerIsOrganizer ? (
+            <form action={rotateInvite}>
+              <input type="hidden" name="groupId" value={group.id} />
+              <button
+                type="submit"
+                className="rounded border border-[var(--line)] px-3 py-1.5 text-sm font-medium"
+              >
+                Rotate code
+              </button>
+            </form>
+          ) : null}
+        </section>
+
+        <section className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold">Members</h2>
           <ul className="flex flex-col gap-2">
-            {departed.map((member) => (
+            {active.map((member) => (
               <li
                 key={member.userId}
-                className="flex flex-wrap items-center justify-between gap-2 text-[var(--muted)]"
+                className="flex flex-wrap items-center justify-between gap-2 rounded border border-[var(--line)] px-4 py-3"
               >
                 <span>
-                  {member.displayName}{" "}
-                  <span className="text-sm">
-                    {member.wasRemoved ? "removed" : "left"}
+                  <span className="font-medium">{member.displayName}</span>{" "}
+                  <span className="text-sm text-[var(--muted)]">
+                    {member.role}
                   </span>
                 </span>
-                {group.viewerIsOrganizer ? (
-                  <form action={restoreMember}>
-                    <input type="hidden" name="groupId" value={group.id} />
-                    <input type="hidden" name="userId" value={member.userId} />
-                    <button
-                      type="submit"
-                      className="rounded border border-[var(--line)] px-3 py-1.5 text-sm"
-                    >
-                      Restore
-                    </button>
-                  </form>
+                {group.viewerIsOrganizer && member.userId !== group.viewerId ? (
+                  <span className="flex gap-2">
+                    <form action={setMemberRole}>
+                      <input type="hidden" name="groupId" value={group.id} />
+                      <input
+                        type="hidden"
+                        name="userId"
+                        value={member.userId}
+                      />
+                      <input
+                        type="hidden"
+                        name="role"
+                        value={
+                          member.role === "organizer" ? "player" : "organizer"
+                        }
+                      />
+                      <button
+                        type="submit"
+                        className="rounded border border-[var(--line)] px-3 py-1.5 text-sm"
+                      >
+                        {member.role === "organizer" ? "Demote" : "Promote"}
+                      </button>
+                    </form>
+                    <form action={removeMember}>
+                      <input type="hidden" name="groupId" value={group.id} />
+                      <input
+                        type="hidden"
+                        name="userId"
+                        value={member.userId}
+                      />
+                      <button
+                        type="submit"
+                        className="rounded border border-[var(--line)] px-3 py-1.5 text-sm text-[var(--clay)]"
+                      >
+                        Remove
+                      </button>
+                    </form>
+                  </span>
                 ) : null}
               </li>
             ))}
           </ul>
         </section>
-      ) : null}
 
-      <form action={leaveGroup}>
-        <input type="hidden" name="groupId" value={group.id} />
-        <button
-          type="submit"
-          className="rounded border border-[var(--line)] px-4 py-2 text-sm font-medium"
-        >
-          Leave this group
-        </button>
-      </form>
-    </main>
+        {departed.length > 0 ? (
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-semibold">Former members</h2>
+            <p className="text-sm text-[var(--muted)]">
+              Their results stay in the group history. Someone an organizer
+              removed cannot rejoin with the invite code.
+            </p>
+            <ul className="flex flex-col gap-2">
+              {departed.map((member) => (
+                <li
+                  key={member.userId}
+                  className="flex flex-wrap items-center justify-between gap-2 text-[var(--muted)]"
+                >
+                  <span>
+                    {member.displayName}{" "}
+                    <span className="text-sm">
+                      {member.wasRemoved ? "removed" : "left"}
+                    </span>
+                  </span>
+                  {group.viewerIsOrganizer ? (
+                    <form action={restoreMember}>
+                      <input type="hidden" name="groupId" value={group.id} />
+                      <input
+                        type="hidden"
+                        name="userId"
+                        value={member.userId}
+                      />
+                      <button
+                        type="submit"
+                        className="rounded border border-[var(--line)] px-3 py-1.5 text-sm"
+                      >
+                        Restore
+                      </button>
+                    </form>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        <form action={leaveGroup}>
+          <input type="hidden" name="groupId" value={group.id} />
+          <button
+            type="submit"
+            className="rounded border border-[var(--line)] px-4 py-2 text-sm font-medium"
+          >
+            Leave this group
+          </button>
+        </form>
+      </main>
+    </>
   );
 }

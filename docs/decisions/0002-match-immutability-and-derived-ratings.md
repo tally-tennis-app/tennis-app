@@ -87,6 +87,8 @@ a "Former player" placeholder.
 
 ### One Supabase project for previews and production
 
+> Superseded for the pilot by [ADR 0003](0003-separate-cloud-environments.md).
+
 Preview deploys write to the same database that holds pilot user data.
 
 **Mitigation while this stands:** no seeded or destructive end-to-end tests against the

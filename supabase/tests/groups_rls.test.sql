@@ -54,7 +54,7 @@ select isnt(
 
 reset role;
 create temp table ctx as
-  select id as g1, invite_code as code1 from public.groups limit 1;
+  select id as g1, invite_code as code1 from public.groups where created_by='11111111-1111-1111-1111-111111111111' and name='Tuesday Ladder';
 -- The temp table is owned by the session role, so the authenticated role it is
 -- read back as needs an explicit grant.
 grant select on ctx to public;

@@ -1,11 +1,25 @@
 "use client";
 
+import { useEffect } from "react";
+
+import {
+  reportClientBoundaryError,
+  sanitizeErrorText,
+} from "@/src/lib/observability/error-report";
+
 export default function ErrorPage({
+  error,
   retry,
 }: {
   error: Error & { digest?: string };
   retry: () => void;
 }) {
+  useEffect(() => {
+    reportClientBoundaryError(error);
+  }, [error]);
+
+  const reference = sanitizeErrorText(error.digest, 80);
+
   return (
     <main className="grid min-h-screen place-items-center bg-[var(--ink)] px-5 text-white">
       <div className="max-w-xl border-l-2 border-[var(--ball)] pl-6 sm:pl-10">
@@ -17,6 +31,11 @@ export default function ErrorPage({
           Something interrupted this point. Try the page again before starting a
           new rally.
         </p>
+        {reference ? (
+          <p className="mt-3 font-mono text-sm text-white/50">
+            Reference: {reference}
+          </p>
+        ) : null}
         <button
           type="button"
           onClick={retry}
