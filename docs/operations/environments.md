@@ -3,10 +3,10 @@
 The pilot uses two independent Supabase Cloud projects in the
 `tally-tennis-app` organization:
 
-| Environment | Supabase project                             | Application deployment                              |
-| ----------- | -------------------------------------------- | --------------------------------------------------- |
-| Preview     | `tennis-preview` (`ubbsiozrhpypjlsztwxk`)    | Pending Vercel GitHub integration and first preview |
-| Production  | `tennis-production` (`ryowfnsbwdyrqpxsyvfp`) | <https://tennis-app-vert.vercel.app>                |
+| Environment | Supabase project                             | Application deployment                         |
+| ----------- | -------------------------------------------- | ---------------------------------------------- |
+| Preview     | `tennis-preview` (`ubbsiozrhpypjlsztwxk`)    | <https://tennis-js5sxxkxv-max-be74.vercel.app> |
+| Production  | `tennis-production` (`ryowfnsbwdyrqpxsyvfp`) | <https://tennis-app-vert.vercel.app>           |
 
 Local Supabase is test data only. Preview must never connect to production, and
 production must never use a loopback URL.
@@ -53,12 +53,18 @@ contain independent Supabase URLs and publishable keys. The first deployment of
 commit `5473e15` established the production alias and passed signed-out route,
 manifest, Supabase REST, and Supabase Auth endpoint checks on 2026-09-14.
 
+The protected preview deployment of commit `46ce1ac` passed its Vercel-authenticated
+route check and its Supabase REST and Auth endpoint checks. Its exact callback and
+password-reset URLs are allow-listed in `tennis-preview`; new direct CLI previews
+need their exact URLs added before testing email flows.
+
 Vercel could not connect the GitHub repository because its GitHub app does not
 currently have access to `tally-tennis-app/tennis-app`. Grant that repository to
-the Vercel GitHub app, connect it to the project, and create the first pull-request
-preview before completing the authenticated preview smoke test. After pull
-request #20 merges, deploy the merge commit to production and repeat the smoke
-test; do not treat the initial branch deployment as the final pilot release.
+the Vercel GitHub app and connect it to the project before relying on automatic
+pull-request previews. Complete the authenticated preview smoke test with two real
+pilot accounts. After pull request #20 merges, deploy the merge commit to production
+and repeat the smoke test; do not treat the initial branch deployment as the final
+pilot release.
 
 Supabase recommends separate local, staging, and production environments:
 [Managing environments](https://supabase.com/docs/guides/deployment/managing-environments).

@@ -30,8 +30,8 @@ which fixes match immutability and derived ratings.
 
 ### Remaining launch prerequisites
 
-- Grant the Vercel GitHub app access to this organization repository, create the first
-  pull-request preview, and complete authenticated preview and production smoke tests.
+- Grant the Vercel GitHub app access to this organization repository and complete
+  authenticated preview and production smoke tests with two real pilot accounts.
 - Complete the final frontend design pass and installed-PWA checks on physical iOS and
   Android devices.
 
@@ -341,9 +341,9 @@ Runs alongside C rather than after it.
   2026-09-14. Cloud recovery rehearsal, deployment smoke tests, and physical devices
   remain external launch steps.
 - Vercel has independent Preview and Production environment values. The initial branch
-  deployment is live at `https://tennis-app-vert.vercel.app`; GitHub integration, the
-  first pull-request preview, authenticated smoke checks, and a post-merge production
-  deployment remain.
+  deployment is live at `https://tennis-app-vert.vercel.app`, and a protected preview is
+  live at `https://tennis-js5sxxkxv-max-be74.vercel.app`. GitHub integration,
+  authenticated smoke checks, and a post-merge production deployment remain.
 
 ---
 
@@ -364,9 +364,9 @@ Milestone F (cloud databases and initial Vercel deployment ready)
 ```
 
 The current edge is application rollout: grant the Vercel GitHub app repository access,
-create and validate the preview, obtain the required review, merge #20, redeploy the merge
-commit, and run the authenticated smoke and device checks. No real pilot data belongs in
-the local test stack.
+run the authenticated preview smoke test with two real pilot accounts, obtain the required
+review, merge #20, redeploy the merge commit, and run the production smoke and device
+checks. No real pilot data belongs in the local test stack.
 
 ---
 
