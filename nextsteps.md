@@ -30,8 +30,8 @@ which fixes match immutability and derived ratings.
 
 ### Remaining launch prerequisites
 
-- Grant the Vercel GitHub app access to this organization repository and complete
-  authenticated preview and production smoke tests with two real pilot accounts.
+- Enable the prepared GitHub Actions deployment jobs and complete authenticated preview
+  and production smoke tests with two real pilot accounts.
 - Complete the final frontend design pass and installed-PWA checks on physical iOS and
   Android devices.
 
@@ -342,8 +342,10 @@ Runs alongside C rather than after it.
   remain external launch steps.
 - Vercel has independent Preview and Production environment values. The initial branch
   deployment is live at `https://tennis-app-vert.vercel.app`, and a protected preview is
-  live at `https://tennis-js5sxxkxv-max-be74.vercel.app`. GitHub integration,
-  authenticated smoke checks, and a post-merge production deployment remain.
+  live at `https://tennis-js5sxxkxv-max-be74.vercel.app`. The organization owner controls
+  GitHub App installation, so prebuilt-output GitHub Actions jobs provide automatic
+  deployments instead. Encrypted repository secrets, authenticated smoke checks, and a
+  post-merge production deployment remain.
 
 ---
 
@@ -363,10 +365,10 @@ Milestone E (ratings) — implemented
 Milestone F (cloud databases and initial Vercel deployment ready)
 ```
 
-The current edge is application rollout: grant the Vercel GitHub app repository access,
-run the authenticated preview smoke test with two real pilot accounts, obtain the required
-review, merge #20, redeploy the merge commit, and run the production smoke and device
-checks. No real pilot data belongs in the local test stack.
+The current edge is application rollout: enable the prepared deployment jobs, run the
+authenticated preview smoke test with two real pilot accounts, obtain the required review,
+merge #20, verify the merge commit's production deployment, and run the production smoke
+and device checks. No real pilot data belongs in the local test stack.
 
 ---
 

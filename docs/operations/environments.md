@@ -58,13 +58,15 @@ route check and its Supabase REST and Auth endpoint checks. Its exact callback a
 password-reset URLs are allow-listed in `tennis-preview`; new direct CLI previews
 need their exact URLs added before testing email flows.
 
-Vercel could not connect the GitHub repository because its GitHub app does not
-currently have access to `tally-tennis-app/tennis-app`. Grant that repository to
-the Vercel GitHub app and connect it to the project before relying on automatic
-pull-request previews. Complete the authenticated preview smoke test with two real
-pilot accounts. After pull request #20 merges, deploy the merge commit to production
-and repeat the smoke test; do not treat the initial branch deployment as the final
-pilot release.
+The organization owner controls GitHub App installation, so Vercel cannot use its
+native GitHub integration. The `deploy-preview` and `deploy-production` CI jobs use
+Vercel's prebuilt-output workflow instead: GitHub builds the application, and only
+`.vercel/output` is uploaded. They run after both existing CI jobs pass, skip previews
+from forks and Dependabot, and keep the Vercel token and IDs in GitHub Actions secrets.
+
+Complete the authenticated preview smoke test with two real pilot accounts. After pull
+request #20 merges, verify the merge commit's automatic production deployment and repeat
+the smoke test; do not treat the initial branch deployment as the final pilot release.
 
 Supabase recommends separate local, staging, and production environments:
 [Managing environments](https://supabase.com/docs/guides/deployment/managing-environments).
