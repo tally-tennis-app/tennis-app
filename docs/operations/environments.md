@@ -3,10 +3,10 @@
 The pilot uses two independent Supabase Cloud projects in the
 `tally-tennis-app` organization:
 
-| Environment | Supabase project    | Application deployment   |
-| ----------- | ------------------- | ------------------------ |
-| Preview     | `tennis-preview`    | Pull-request previews    |
-| Production  | `tennis-production` | Production branch/domain |
+| Environment | Supabase project                             | Application deployment   |
+| ----------- | -------------------------------------------- | ------------------------ |
+| Preview     | `tennis-preview` (`ubbsiozrhpypjlsztwxk`)    | Pull-request previews    |
+| Production  | `tennis-production` (`ryowfnsbwdyrqpxsyvfp`) | Production branch/domain |
 
 Local Supabase is test data only. Preview must never connect to production, and
 production must never use a loopback URL.
@@ -26,13 +26,17 @@ password manager and never use a `NEXT_PUBLIC_` prefix.
 ## Provisioning
 
 1. Create both projects in the same nearby region and record their project refs
-   and passwords in the team password manager.
+   and passwords in the team password manager. Completed 2026-09-14 in
+   `us-east-1`; database passwords and publishable keys are stored in macOS
+   Keychain under the corresponding project names.
 2. Run the local release gate from a clean commit.
 3. Link and push migrations to preview first. Discover flags with
    `supabase link --help` and `supabase db push --help`; confirm the displayed
    project ref before every push. Never include seed data.
-4. Run `supabase db advisors --linked --type security --level warn` and fix all
-   findings.
+4. Run `supabase db advisors --linked --type security --level warn`. Fix every
+   unexpected finding. The remaining warnings are the authenticated
+   `SECURITY DEFINER` RPCs and policy helpers whose authorization behavior is
+   covered by pgTAP; there must be no anonymous or error-level findings.
 5. Configure preview Auth Site URL and redirect allow-list for the preview host,
    including `/auth/callback` and `/update-password` flows.
 6. Deploy the preview application with only preview public variables. Verify

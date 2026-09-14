@@ -1,7 +1,7 @@
 # Next steps
 
 A roadmap from the current foundation to a working pilot. Last revised 2026-09-14 on
-`feature/pilot-nextsteps` from `main` at `7e08dd4`. Milestones A and B were already
+`feature/pilot-nextsteps` from `main` at `0e5bebe`. Milestones A and B were already
 complete. Matches, ratings, and the functional application shell are implemented on this
 branch. Final visual design remains deliberately deferred.
 
@@ -18,21 +18,18 @@ which fixes match immutability and derived ratings.
 
 ### What exists and works
 
-| Area       | State                                                                                                                     |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Framework  | Next.js 16.3.4, React 19.3.0, App Router, Tailwind v4, TypeScript 5.9 strict                                              |
-| Routes     | Signed-out welcome/auth routes plus dashboard, groups, match history/detail/edit, global and group standings, and profile |
-| Matches    | Atomic submit/edit/withdraw/confirm/reject/void RPC lifecycle with legal best-of-three scores and 14-day pending expiry   |
-| Ratings    | Derived 1500/K32 Elo ordered by confirmation, rating history, MOV fixtures, retirement/walkover/void semantics            |
-| Security   | RLS, explicit RPC/table grants, security-invoker standings view, serialized membership and confirmation mutations         |
-| Tests      | 63 application tests, 194 pgTAP assertions, four overlapping-transaction checks, and desktop/mobile browser coverage      |
-| Operations | Structured sanitized errors, isolated recovery drill, environment/rollback runbooks, CI integration and type drift checks |
+| Area       | State                                                                                                                      |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Framework  | Next.js 16.3.4, React 19.3.0, App Router, Tailwind v4, TypeScript 6.0 strict                                               |
+| Routes     | Signed-out welcome/auth routes plus dashboard, groups, match history/detail/edit, global and group standings, and profile  |
+| Matches    | Atomic submit/edit/withdraw/confirm/reject/void RPC lifecycle with legal best-of-three scores and 14-day pending expiry    |
+| Ratings    | Derived 1500/K32 Elo ordered by confirmation, rating history, MOV fixtures, retirement/walkover/void semantics             |
+| Security   | RLS, explicit RPC/table grants, security-invoker standings view, serialized membership and confirmation mutations          |
+| Tests      | 63 application tests, 198 pgTAP assertions, four overlapping-transaction checks, and desktop/mobile browser coverage       |
+| Operations | Structured sanitized errors, isolated recovery drill, two migrated cloud environments, runbooks, CI, and type drift checks |
 
 ### Remaining launch prerequisites
 
-- Create and migrate the separate `tennis-preview` and `tennis-production` Supabase
-  Cloud projects. The CLI account is authenticated; project creation depends on the
-  organization's billing choice.
 - Connect the repository to a deployment host, configure scoped environment variables,
   and complete preview and production smoke tests.
 - Complete the final frontend design pass and installed-PWA checks on physical iOS and
@@ -91,9 +88,9 @@ generated avatars, tournaments, and social login. All already deferred in
 
 **Goal:** a green `main` and an empty pull request queue.
 
-**Current:** `main` is green. Dependabot pull request #19 is the only open request; its
-TypeScript 6 update has green quality and database checks and is mergeable, but repository
-rules require one approval. Auto-merge is disabled.
+**Current:** `main` is green. Pull request #19 merged its isolated TypeScript 6 update.
+Pull request #20 contains the pilot work and has green quality and database checks; the
+repository requires Mateo's approval before merge.
 
 1. ~~Merge `fix/ci-bootstrap`.~~ Landed as pull request #4. `typecheck` now runs
    `next typegen && tsc --noEmit`, the pattern Next 16 documents for type-checking route
@@ -112,15 +109,15 @@ Two development dependencies cannot be upgraded, and neither is our code's fault
 `eslint-config-next@16.3.4` vendors its own copies of `typescript-eslint` and
 `eslint-plugin-react`, so their compatibility is what actually binds:
 
-| Dependency   | Held at    | Why                                                                                                                                                                                | Clears when                                                               |
-| ------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `eslint`     | 9.x        | ESLint 10 removed `context.getFilename()`, which `eslint-plugin-react` still calls. Every rule in that plugin throws on load, so `npm run lint` exits 2 before linting anything.   | `eslint-config-next` ships a release with a patched `eslint-plugin-react` |
-| `typescript` | 6.x target | TypeScript 6 is supported; TypeScript 7 remains outside the current parser range ([typescript-eslint#10940](https://github.com/typescript-eslint/typescript-eslint/issues/10940)). | `typescript-eslint` ships TS >= 7.1 support                               |
+| Dependency   | Held at | Why                                                                                                                                                                                | Clears when                                                               |
+| ------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `eslint`     | 9.x     | ESLint 10 removed `context.getFilename()`, which `eslint-plugin-react` still calls. Every rule in that plugin throws on load, so `npm run lint` exits 2 before linting anything.   | `eslint-config-next` ships a release with a patched `eslint-plugin-react` |
+| `typescript` | 6.x     | TypeScript 6 is supported; TypeScript 7 remains outside the current parser range ([typescript-eslint#10940](https://github.com/typescript-eslint/typescript-eslint/issues/10940)). | `typescript-eslint` ships TS >= 7.1 support                               |
 
-ESLint 10 is held at the incompatible major. Pull request #19 isolates the supported
-TypeScript 6 update and can merge after the required human approval.
+ESLint 10 is held at the incompatible major. Pull request #19 isolated and merged the
+supported TypeScript 6 update.
 
-**Done when:** the pilot branch and #19 have green CI and the required approvals.
+**Done when:** the pilot branch has green CI and the required approval.
 
 ---
 
@@ -331,7 +328,7 @@ Runs alongside C rather than after it.
 
 ## 9. Milestone F — Pilot readiness
 
-**Status: repository and local recovery work implemented; hosted rollout remains.**
+**Status: cloud databases provisioned; application deployment remains.**
 
 - The scripted synthetic backup/restore drill compares content, schema, security metadata,
   ratings, and restored policy tests in two isolated databases.
@@ -340,16 +337,16 @@ Runs alongside C rather than after it.
   `docs/operations/`.
 - CI exercises database policies, real overlapping transactions, generated-type drift,
   and isolated desktop/mobile match flows.
-- Separate preview and production Supabase Cloud projects are mandatory. Hosted migration,
-  cloud recovery rehearsal, deployment smoke tests, and physical devices remain external
-  launch steps.
+- Separate preview and production Supabase Cloud projects were created and migrated on
+  2026-09-14. Cloud recovery rehearsal, deployment smoke tests, and physical devices
+  remain external launch steps.
 
 ---
 
 ## 10. Suggested order
 
 ```
-Milestone 0  ──▶  decisions landed as documentation (done; #19 awaits approval)
+Milestone 0  ──▶  decisions and TypeScript 6 landed (done)
                         │
 Milestone A (auth, proxy.ts, Supabase CLI, migrations) — done, pull request #6
                         │
@@ -359,12 +356,12 @@ Milestone C (matches, standings) ══ Milestone D (functional shell) — imple
                         │
 Milestone E (ratings) — implemented
                         │
-Milestone F (local readiness implemented; hosted rollout pending)
+Milestone F (cloud databases ready; application deployment pending)
 ```
 
-The current edge is hosted rollout: provision isolated cloud projects, apply migrations to
-preview then production, deploy the reviewed commit, and run the documented smoke and
-device checks. No real pilot data belongs in the local test stack.
+The current edge is application rollout: deploy the reviewed commit with independently
+scoped preview and production variables, configure Auth URLs, and run the documented
+smoke and device checks. No real pilot data belongs in the local test stack.
 
 ---
 
