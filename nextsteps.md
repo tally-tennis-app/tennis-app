@@ -341,11 +341,11 @@ Runs alongside C rather than after it.
   2026-09-14. Cloud recovery rehearsal, deployment smoke tests, and physical devices
   remain external launch steps.
 - Vercel has independent Preview and Production environment values. The initial branch
-  deployment is live at `https://tennis-app-vert.vercel.app`, and a protected preview is
-  live at `https://tennis-js5sxxkxv-max-be74.vercel.app`. The organization owner controls
-  GitHub App installation, so prebuilt-output GitHub Actions jobs provide automatic
-  deployments instead. Encrypted repository secrets, authenticated smoke checks, and a
-  post-merge production deployment remain.
+  deployment is live at `https://tennis-app-vert.vercel.app`, and protected previews use
+  the stable `https://tennis-app-preview-max-be74.vercel.app` alias. The organization
+  owner controls GitHub App installation, so prebuilt-output GitHub Actions jobs provide
+  automatic deployments instead. Authenticated smoke checks and a post-merge production
+  deployment remain.
 
 ---
 

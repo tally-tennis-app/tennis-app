@@ -3,10 +3,10 @@
 The pilot uses two independent Supabase Cloud projects in the
 `tally-tennis-app` organization:
 
-| Environment | Supabase project                             | Application deployment                         |
-| ----------- | -------------------------------------------- | ---------------------------------------------- |
-| Preview     | `tennis-preview` (`ubbsiozrhpypjlsztwxk`)    | <https://tennis-js5sxxkxv-max-be74.vercel.app> |
-| Production  | `tennis-production` (`ryowfnsbwdyrqpxsyvfp`) | <https://tennis-app-vert.vercel.app>           |
+| Environment | Supabase project                             | Application deployment                           |
+| ----------- | -------------------------------------------- | ------------------------------------------------ |
+| Preview     | `tennis-preview` (`ubbsiozrhpypjlsztwxk`)    | <https://tennis-app-preview-max-be74.vercel.app> |
+| Production  | `tennis-production` (`ryowfnsbwdyrqpxsyvfp`) | <https://tennis-app-vert.vercel.app>             |
 
 Local Supabase is test data only. Preview must never connect to production, and
 production must never use a loopback URL.
@@ -53,16 +53,17 @@ contain independent Supabase URLs and publishable keys. The first deployment of
 commit `5473e15` established the production alias and passed signed-out route,
 manifest, Supabase REST, and Supabase Auth endpoint checks on 2026-09-14.
 
-The protected preview deployment of commit `46ce1ac` passed its Vercel-authenticated
-route check and its Supabase REST and Auth endpoint checks. Its exact callback and
-password-reset URLs are allow-listed in `tennis-preview`; new direct CLI previews
-need their exact URLs added before testing email flows.
+The protected preview deployment passed its Vercel-authenticated route check and its
+Supabase REST and Auth endpoint checks. The CI job moves the stable
+`tennis-app-preview-max-be74.vercel.app` alias to each successful preview, and that
+alias's exact callback and password-reset URLs are allow-listed in `tennis-preview`.
 
 The organization owner controls GitHub App installation, so Vercel cannot use its
 native GitHub integration. The `deploy-preview` and `deploy-production` CI jobs use
 Vercel's prebuilt-output workflow instead: GitHub builds the application, and only
 `.vercel/output` is uploaded. They run after both existing CI jobs pass, skip previews
-from forks and Dependabot, and keep the Vercel token and IDs in GitHub Actions secrets.
+from forks and Dependabot, keep the Vercel token and IDs in GitHub Actions secrets, and
+move the stable preview alias only after a successful deployment.
 
 Complete the authenticated preview smoke test with two real pilot accounts. After pull
 request #20 merges, verify the merge commit's automatic production deployment and repeat

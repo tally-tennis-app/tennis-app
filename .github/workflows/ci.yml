@@ -147,7 +147,16 @@ jobs:
         run: vercel build --token="${{ secrets.VERCEL_TOKEN }}"
 
       - name: Deploy preview artifacts
-        run: vercel deploy --prebuilt --token="${{ secrets.VERCEL_TOKEN }}"
+        id: deploy-preview
+        run: |
+          deployment_url="$(vercel deploy --prebuilt --token="${{ secrets.VERCEL_TOKEN }}")"
+          echo "url=${deployment_url}" >> "$GITHUB_OUTPUT"
+
+      - name: Assign stable preview alias
+        run: >-
+          vercel alias set "${{ steps.deploy-preview.outputs.url }}"
+          tennis-app-preview-max-be74.vercel.app
+          --token="${{ secrets.VERCEL_TOKEN }}"
 
   deploy-production:
     name: deploy-production
