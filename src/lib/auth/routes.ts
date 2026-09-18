@@ -14,6 +14,7 @@ const signedOutOnly = new Set<string>([...authPages, "/"]);
 /** Pages reachable without a session. */
 const publicPages = new Set<string>([
   "/",
+  "/welcome",
   ...authPages,
   "/auth/callback",
   "/auth/confirm",

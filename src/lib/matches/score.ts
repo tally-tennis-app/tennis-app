@@ -47,6 +47,9 @@ export function validateScore(outcome: Outcome, sets: SetScore[]): Validation {
   }
 
   if (sets.length > 3) return { error: "A match has at most three sets." };
+  if (outcome === "retired" && sets.length === 0) {
+    return { error: "Enter the score as it stood when play stopped." };
+  }
 
   for (const [index, set] of sets.entries()) {
     const label = `Set ${index + 1}`;
@@ -85,8 +88,9 @@ export function validateScore(outcome: Outcome, sets: SetScore[]): Validation {
       continue;
     }
 
-    // Only a retirement may end on an unfinished set.
-    if (outcome === "completed" || !isLast) {
+    // Only a retirement may end on an unfinished set, and an unfinished set
+    // cannot have reached seven games.
+    if (outcome === "completed" || !isLast || set.a > 6 || set.b > 6) {
       return {
         error: `${label}: ${set.a}-${set.b} is not a finished set. Sets end 6-0 to 6-4, 7-5, or 7-6.`,
       };
@@ -125,4 +129,41 @@ export function gameTotals(sets: SetScore[]) {
     (totals, set) => ({ a: totals.a + set.a, b: totals.b + set.b }),
     { a: 0, b: 0 },
   );
+}
+
+/** A set as submit_match() stores it (20260913010000_matches.sql). */
+export type MatchSetInput = {
+  set_number: number;
+  games_a: number;
+  games_b: number;
+  tiebreak_a: number | null;
+  tiebreak_b: number | null;
+  complete: boolean;
+};
+
+/**
+ * Converts the form's sets to the database shape. The form asks only for the
+ * tiebreak loser's points, the way scores are written (7-6(5)); the winner's
+ * are implied: seven, or two clear once the loser reached six.
+ */
+export function toMatchSets(sets: SetScore[]): MatchSetInput[] {
+  return sets.map((set, index) => {
+    let tiebreak_a: number | null = null;
+    let tiebreak_b: number | null = null;
+    if (set.tiebreak != null && isTiebreakSet(set)) {
+      const winnerPoints = Math.max(7, set.tiebreak + 2);
+      [tiebreak_a, tiebreak_b] =
+        set.a > set.b
+          ? [winnerPoints, set.tiebreak]
+          : [set.tiebreak, winnerPoints];
+    }
+    return {
+      set_number: index + 1,
+      games_a: set.a,
+      games_b: set.b,
+      tiebreak_a,
+      tiebreak_b,
+      complete: isCompleteSet(set),
+    };
+  });
 }

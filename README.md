@@ -1,6 +1,6 @@
 # Tennis App
 
-Tenny is an online-first tennis community app: players log match scores that their opponent confirms, standings and ratings are derived from those verified results, and organizers run groups and single-elimination tournaments. It ships as an installable web app (see [ADR 0001](docs/decisions/0001-online-first-pwa.md)).
+Tenny is an online-first tennis community app for private groups: players log match scores that their opponent confirms, standings and global and group Elo ratings are derived from those verified results, and organizers run single-elimination tournaments. It ships as an installable web app (see [ADR 0001](docs/decisions/0001-online-first-pwa.md)).
 
 The design contract lives in [`docs/design/ui-direction.md`](docs/design/ui-direction.md) and the roadmap in [`nextsteps.md`](nextsteps.md).
 
@@ -8,7 +8,7 @@ The design contract lives in [`docs/design/ui-direction.md`](docs/design/ui-dire
 
 - Node.js 24 LTS (`nvm use` reads the committed `.nvmrc`)
 - npm 11 or newer
-- A Supabase project when working on data-backed features
+- Supabase CLI plus a container runtime for local data-backed work
 
 ## Local setup
 
@@ -21,23 +21,24 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Replace the example values in `.env.local` with the development project's browser-safe Supabase URL and publishable key. Never commit `.env.local`, service-role keys, database passwords, or access tokens.
+Start the local Supabase stack and place its browser-safe URL and publishable key in `.env.local`. Never commit `.env.local`, secret/service-role keys, database passwords, or access tokens.
 
-Open [http://localhost:3000](http://localhost:3000). The landing page does not contact Supabase, so it can be previewed before credentials are added. Everything behind sign-in needs a database: `npm run db:start` runs the local Supabase stack (a container runtime is required), and `.env.example` shows how to point `.env.local` at it.
+Open [http://localhost:3000](http://localhost:3000). The landing page does not contact Supabase; authenticated screens require the configured database.
 
 ## Commands
 
-| Command                | Purpose                                 |
-| ---------------------- | --------------------------------------- |
-| `npm run dev`          | Start the Next.js development server    |
-| `npm run build`        | Produce a production build              |
-| `npm run start`        | Serve the production build              |
-| `npm run format:check` | Verify Prettier formatting              |
-| `npm run lint`         | Run ESLint                              |
-| `npm run typecheck`    | Check TypeScript without emitting files |
-| `npm test`             | Run unit and component tests once       |
-| `npm run test:e2e`     | Run Playwright on desktop and mobile    |
-| `npm run db:test`      | Run the database policy tests           |
+| Command                    | Purpose                                  |
+| -------------------------- | ---------------------------------------- |
+| `npm run dev`              | Start the Next.js development server     |
+| `npm run build`            | Produce a production build               |
+| `npm run start`            | Serve the production build               |
+| `npm run format:check`     | Verify Prettier formatting               |
+| `npm run lint`             | Run ESLint                               |
+| `npm run typecheck`        | Check TypeScript without emitting files  |
+| `npm test`                 | Run unit and component tests once        |
+| `npm run test:e2e`         | Run desktop and mobile browser tests     |
+| `npm run db:test`          | Run database policy and validation tests |
+| `npm run db:restore-drill` | Verify a disposable backup and restore   |
 
 Install the Playwright browser once before the first local end-to-end run:
 
@@ -45,15 +46,14 @@ Install the Playwright browser once before the first local end-to-end run:
 npx playwright install chromium
 ```
 
-Journeys that create accounts and data (the match loop, a full tournament, and the
-signed-in accessibility audit) skip themselves unless pointed at the local stack. They
-never run against a hosted project:
+Journeys that create accounts and data (the match lifecycle, a full tournament, and the
+signed-in accessibility audit) run only against the local stack, which
+`scripts/test-local-e2e.py` builds and points them at. It refuses any non-local
+database:
 
 ```bash
 npm run db:start
-export E2E_LOCAL_SUPABASE_SECRET="$(npx supabase status -o json | jq -r .SECRET_KEY)"
-export E2E_LOCAL_SUPABASE_PUBLISHABLE="$(npx supabase status -o json | jq -r .PUBLISHABLE_KEY)"
-npm run test:e2e
+python3 scripts/test-local-e2e.py
 ```
 
 ## Collaboration
@@ -68,20 +68,21 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the complete working agreement.
 
 ## Environments and deployment
 
-- Pull requests receive Vercel preview deployments.
-- `main` deploys to production.
-- Previews and production share one Supabase project. This is a deliberate, time-limited tradeoff recorded in [ADR 0002](docs/decisions/0002-match-immutability-and-derived-ratings.md); no seeded or destructive end-to-end test may run against it, and it must be split before anyone outside the pilot group is onboarded.
+- Pull requests use the preview deployment and `tennis-preview` Supabase Cloud project.
+- `main` uses the production deployment and independent `tennis-production` project.
 - The only browser-exposed values are `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+
+See [cloud environments](docs/operations/environments.md), [deployment and rollback](docs/operations/deploy-rollback.md), and [backup verification](docs/operations/backup-restore.md).
 
 ## Install as a desktop app
 
-The foundation is an online-only Progressive Web App. In a supported desktop Chrome or Edge browser, open the deployed site and choose **Install Tennis App** from the address bar or browser menu. The installed app opens in its own window and remains network-dependent.
+The foundation is an online-only Progressive Web App. In a supported desktop Chrome or Edge browser, open the deployed site and choose **Install Tenny** from the address bar or browser menu. The installed app opens in its own window and remains network-dependent.
 
 Native installers are intentionally deferred. See [the desktop decision record](docs/decisions/0001-online-first-pwa.md) for the Tauri evaluation gate.
 
 ## Product boundaries
 
-This foundation contains no database schema, authentication flow, score parsing, Elo calculation, scheduling, tournament engine, push notifications, or offline synchronization. The product decisions that precede those features are resolved and recorded in [docs/product-questions.md](docs/product-questions.md), with the reasoning behind match immutability and derived ratings in [ADR 0002](docs/decisions/0002-match-immutability-and-derived-ratings.md). The build order is in [nextsteps.md](nextsteps.md).
+The pilot includes authentication, groups, verified singles matches, standings, derived Elo, and single-elimination tournaments ([ADR 0004](docs/decisions/0004-tournaments-v1.md)). Scheduling, other tournament formats, push notifications, doubles, and offline synchronization remain outside the pilot. Product decisions are recorded in [docs/product-questions.md](docs/product-questions.md), with match immutability and ratings in [ADR 0002](docs/decisions/0002-match-immutability-and-derived-ratings.md). Current delivery status is in [nextsteps.md](nextsteps.md).
 
 ## License
 

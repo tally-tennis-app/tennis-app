@@ -29,15 +29,3 @@ export const getPlayer = cache(
       : null;
   },
 );
-
-/** Display names for a set of ids, where the viewer may read them. */
-export async function getNames(ids: string[]): Promise<Map<string, string>> {
-  if (ids.length === 0) return new Map();
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, display_name")
-    .in("id", [...new Set(ids)]);
-  if (error) throw error;
-  return new Map((data ?? []).map((row) => [row.id, row.display_name]));
-}

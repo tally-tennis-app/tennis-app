@@ -1,8 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { createPlayer, groupOf, rpc, secret, signIn } from "./local-stack";
-
-test.skip(!secret, "needs the local Supabase stack");
+import { createPlayer, groupOf, rpc, signIn } from "./local-stack";
 
 async function logResult(
   page: Page,

@@ -11,14 +11,17 @@ import {
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
 import { roundsFor, tieRoundName } from "@/src/lib/tournaments/types";
 
+// Schema: supabase/migrations/20260913010000_matches.sql. The submitter is
+// always player_a when submit_match() creates a row, but the view below
+// orients by submitted_by so it never depends on that.
 const matchColumns = `
-  id, group_id, played_on, outcome, status, submitted_by, opponent_id,
-  winner_id, submitted_at, confirmed_at, rejected_at, rejection_reason,
-  voided_at, void_reason,
+  id, group_id, played_on, outcome, status, player_a, player_b, winner,
+  retired_by, submitted_by, created_at, confirmed_at, voided_at, void_reason,
+  rejection_reason,
   groups(name),
-  submitter:profiles!matches_submitted_by_fkey(display_name),
-  opponent:profiles!matches_opponent_id_fkey(display_name),
-  match_sets(set_number, submitter_games, opponent_games, tiebreak_points),
+  a:profiles!matches_player_a_fkey(display_name),
+  b:profiles!matches_player_b_fkey(display_name),
+  match_sets(set_number, games_a, games_b, tiebreak_a, tiebreak_b),
   tie:tournament_ties!matches_tournament_tie_id_fkey(round, tournament_id, tournaments(name, draw_size))
 `;
 
@@ -28,23 +31,25 @@ type MatchRow = {
   played_on: string;
   outcome: string;
   status: string;
+  player_a: string;
+  player_b: string;
+  winner: string;
+  retired_by: string | null;
   submitted_by: string;
-  opponent_id: string;
-  winner_id: string;
-  submitted_at: string;
+  created_at: string;
   confirmed_at: string | null;
-  rejected_at: string | null;
-  rejection_reason: string | null;
   voided_at: string | null;
   void_reason: string | null;
+  rejection_reason: string | null;
   groups: { name: string } | null;
-  submitter: { display_name: string } | null;
-  opponent: { display_name: string } | null;
+  a: { display_name: string } | null;
+  b: { display_name: string } | null;
   match_sets: {
     set_number: number;
-    submitter_games: number;
-    opponent_games: number;
-    tiebreak_points: number | null;
+    games_a: number;
+    games_b: number;
+    tiebreak_a: number | null;
+    tiebreak_b: number | null;
   }[];
   tie: {
     round: number;
@@ -53,40 +58,67 @@ type MatchRow = {
   } | null;
 };
 
-// A profile is readable only while the viewer shares a group with its owner,
-// so a player the viewer no longer shares a group with has no readable name.
+// A profile is readable only while the viewer shares a group with its owner.
 const FORMER_PLAYER = "Former player";
 
 /**
- * Global rating change per match and player, keyed "matchId:playerId". The
- * fold runs once per request however many cards a page renders.
+ * One player's overall rating change per match, from get_rating_history().
+ * Cached per request and player; a player the viewer may not see yields none.
  */
-export const getRatingDeltas = cache(async (): Promise<Map<string, number>> => {
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.rpc("rating_history", {});
-  if (error) throw error;
+const ratingDeltasFor = cache(
+  async (playerId: string): Promise<Map<string, number>> => {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.rpc("get_rating_history", {
+      p_player_id: playerId,
+    });
+    if (error) {
+      if (error.code === "42501") return new Map();
+      throw error;
+    }
+    return new Map((data ?? []).map((row) => [row.match_id, row.delta]));
+  },
+);
 
-  return new Map(
-    (data ?? []).map((row) => [
-      `${row.match_id}:${row.player_id}`,
-      row.rating_after - row.rating_before,
-    ]),
+async function withDeltas(rows: MatchRow[], playerIds: string[]) {
+  const maps = await Promise.all(
+    [...new Set(playerIds)].map(
+      async (id) => [id, await ratingDeltasFor(id)] as const,
+    ),
   );
-});
+  const byPlayer = new Map(maps);
+  return rows.map((row) => toView(row, byPlayer));
+}
 
-function toView(row: MatchRow, deltas: Map<string, number>): MatchView {
+function toView(
+  row: MatchRow,
+  deltas: Map<string, Map<string, number>>,
+): MatchView {
+  const submitterIsA = row.submitted_by !== row.player_b;
   const sets: SetScore[] = [...row.match_sets]
-    .sort((a, b) => a.set_number - b.set_number)
-    .map((set) => ({
-      a: set.submitter_games,
-      b: set.opponent_games,
-      tiebreak: set.tiebreak_points,
-    }));
+    .sort((x, y) => x.set_number - y.set_number)
+    .map((set) => {
+      const [mine, theirs] = submitterIsA
+        ? [set.games_a, set.games_b]
+        : [set.games_b, set.games_a];
+      // Shown the conventional way, 7-6(5): the tiebreak loser's points.
+      const tiebreak =
+        set.tiebreak_a === null || set.tiebreak_b === null
+          ? null
+          : Math.min(set.tiebreak_a, set.tiebreak_b);
+      return { a: mine, b: theirs, tiebreak };
+    });
+
+  const player = (id: string, profile: { display_name: string } | null) => ({
+    id,
+    name: profile?.display_name ?? FORMER_PLAYER,
+  });
+  const playerA = player(row.player_a, row.a);
+  const playerB = player(row.player_b, row.b);
 
   const ratingDeltas: Record<string, number> = {};
-  for (const player of [row.submitted_by, row.opponent_id]) {
-    const delta = deltas.get(`${row.id}:${player}`);
-    if (delta !== undefined) ratingDeltas[player] = delta;
+  for (const id of [row.player_a, row.player_b]) {
+    const delta = deltas.get(id)?.get(row.id);
+    if (delta !== undefined) ratingDeltas[id] = delta;
   }
 
   return {
@@ -95,19 +127,13 @@ function toView(row: MatchRow, deltas: Map<string, number>): MatchView {
     playedOn: row.played_on,
     outcome: row.outcome as MatchView["outcome"],
     status: deriveStatus(row),
-    submitter: {
-      id: row.submitted_by,
-      name: row.submitter?.display_name ?? FORMER_PLAYER,
-    },
-    opponent: {
-      id: row.opponent_id,
-      name: row.opponent?.display_name ?? FORMER_PLAYER,
-    },
-    winnerId: row.winner_id,
+    submitter: submitterIsA ? playerA : playerB,
+    opponent: submitterIsA ? playerB : playerA,
+    winnerId: row.winner,
     sets,
-    submittedAt: row.submitted_at,
+    submittedAt: row.created_at,
     confirmedAt: row.confirmed_at,
-    rejectedAt: row.rejected_at,
+    rejectedAt: null,
     rejectionReason: row.rejection_reason,
     voidedAt: row.voided_at,
     voidReason: row.void_reason,
@@ -146,21 +172,21 @@ function expiryCutoff() {
 
 /**
  * Visible matches, newest played first. RLS decides what is visible; the
- * filters here only narrow it, and they run in the database so private rows
- * never reach the client to be filtered there.
+ * filters only narrow it, and they run in the database so private rows never
+ * reach the client to be filtered there. Rating changes are the viewer's.
  */
 export async function listMatches(
   filters: MatchFilters = {},
   { limit = 20, offset = 0 } = {},
 ): Promise<{ matches: MatchView[]; hasMore: boolean }> {
-  await requireUser("/matches");
+  const user = await requireUser("/matches");
   const supabase = await createSupabaseServerClient();
 
   let query = supabase
     .from("matches")
     .select(matchColumns)
     .order("played_on", { ascending: false })
-    .order("submitted_at", { ascending: false })
+    .order("created_at", { ascending: false })
     // One extra row answers "is there another page" without a count query.
     .range(offset, offset + limit);
 
@@ -176,98 +202,109 @@ export async function listMatches(
       query = query.eq("status", "rejected");
       break;
     case "pending":
-      query = query.eq("status", "pending").gte("submitted_at", cutoff);
+      query = query.eq("status", "pending").gte("created_at", cutoff);
       break;
     case "expired":
-      query = query.eq("status", "pending").lt("submitted_at", cutoff);
+      query = query.eq("status", "pending").lt("created_at", cutoff);
       break;
   }
   const groupId = asUuid(filters.groupId);
   const playerId = asUuid(filters.playerId);
   if (groupId) query = query.eq("group_id", groupId);
   // Checked as a uuid first: it is interpolated into a PostgREST filter.
-  if (playerId) {
-    query = query.or(`submitted_by.eq.${playerId},opponent_id.eq.${playerId}`);
-  }
+  if (playerId)
+    query = query.or(`player_a.eq.${playerId},player_b.eq.${playerId}`);
 
-  const [{ data, error }, deltas] = await Promise.all([
-    query.overrideTypes<MatchRow[], { merge: false }>(),
-    getRatingDeltas(),
-  ]);
+  const { data, error } = await query.overrideTypes<
+    MatchRow[],
+    { merge: false }
+  >();
   if (error) throw error;
 
-  const rows = data ?? [];
+  const rows = (data ?? []).slice(0, limit);
   return {
-    matches: rows.slice(0, limit).map((row) => toView(row, deltas)),
-    hasMore: rows.length > limit,
+    matches: await withDeltas(rows, [user.id]),
+    hasMore: (data ?? []).length > limit,
   };
 }
 
 /**
- * Everything waiting on or for the viewer: submissions to answer, rejected
- * submissions to review, and their own submissions awaiting the opponent.
+ * Submissions waiting on the viewer, and the viewer's own submissions waiting
+ * on an opponent. A rejection is final in this schema, so it needs no answer
+ * and appears in the history instead.
  */
 export const listOpenMatches = cache(async (viewerId: string) => {
   const supabase = await createSupabaseServerClient();
-  const [{ data, error }, deltas] = await Promise.all([
-    supabase
-      .from("matches")
-      .select(matchColumns)
-      .in("status", ["pending", "rejected"])
-      .or(`submitted_by.eq.${viewerId},opponent_id.eq.${viewerId}`)
-      .gte("submitted_at", expiryCutoff())
-      .order("submitted_at", { ascending: true })
-      .overrideTypes<MatchRow[], { merge: false }>(),
-    getRatingDeltas(),
-  ]);
+  const { data, error } = await supabase
+    .from("matches")
+    .select(matchColumns)
+    .eq("status", "pending")
+    .or(`player_a.eq.${viewerId},player_b.eq.${viewerId}`)
+    .gte("created_at", expiryCutoff())
+    .order("created_at", { ascending: true })
+    .overrideTypes<MatchRow[], { merge: false }>();
   if (error) throw error;
 
-  const matches = (data ?? []).map((row) => toView(row, deltas));
+  const matches = await withDeltas(data ?? [], [viewerId]);
   return {
-    needsYou: matches.filter(
-      (m) =>
-        (m.status === "pending" && m.opponent.id === viewerId) ||
-        (m.status === "rejected" && m.submitter.id === viewerId),
-    ),
-    awaitingOpponent: matches.filter(
-      (m) => m.status === "pending" && m.submitter.id === viewerId,
-    ),
+    needsYou: matches.filter((m) => m.opponent.id === viewerId),
+    awaitingOpponent: matches.filter((m) => m.submitter.id === viewerId),
   };
 });
 
+/** One match with both players' rating changes. */
 export const getMatch = cache(async (matchId: string) => {
   await requireUser(`/matches/${matchId}`);
-  const supabase = await createSupabaseServerClient();
-
   // A malformed id is simply "not found", like a match the viewer cannot see.
   if (!asUuid(matchId)) return null;
+  const supabase = await createSupabaseServerClient();
 
-  const [{ data, error }, deltas] = await Promise.all([
-    supabase
-      .from("matches")
-      .select(matchColumns)
-      .eq("id", matchId)
-      .overrideTypes<MatchRow[], { merge: false }>(),
-    getRatingDeltas(),
-  ]);
+  const { data, error } = await supabase
+    .from("matches")
+    .select(matchColumns)
+    .eq("id", matchId)
+    .overrideTypes<MatchRow[], { merge: false }>();
   if (error) throw error;
 
   const row = data?.[0];
-  return row ? toView(row, deltas) : null;
+  if (!row) return null;
+  const [view] = await withDeltas([row], [row.player_a, row.player_b]);
+  return view;
 });
 
-/** Specific matches by id, for tournament draws. */
-export async function getMatchesByIds(ids: string[]): Promise<MatchView[]> {
+/** Specific matches by id, for tournament draws and rating history. */
+export async function getMatchesByIds(
+  ids: string[],
+  viewerId?: string,
+): Promise<MatchView[]> {
   if (ids.length === 0) return [];
   const supabase = await createSupabaseServerClient();
-  const [{ data, error }, deltas] = await Promise.all([
-    supabase
-      .from("matches")
-      .select(matchColumns)
-      .in("id", ids)
-      .overrideTypes<MatchRow[], { merge: false }>(),
-    getRatingDeltas(),
-  ]);
+  const { data, error } = await supabase
+    .from("matches")
+    .select(matchColumns)
+    .in("id", ids)
+    .overrideTypes<MatchRow[], { merge: false }>();
   if (error) throw error;
-  return (data ?? []).map((row) => toView(row, deltas));
+  return withDeltas(data ?? [], viewerId ? [viewerId] : []);
+}
+
+/**
+ * Recent rated results, newest first, for form strips. Walkovers and voided
+ * matches are excluded, matching what the rating fold counts.
+ */
+export async function recentResults(groupId?: string) {
+  const supabase = await createSupabaseServerClient();
+  let query = supabase
+    .from("matches")
+    .select("player_a, player_b, winner, confirmed_at")
+    .eq("status", "confirmed")
+    .is("voided_at", null)
+    .neq("outcome", "walkover")
+    .order("confirmed_at", { ascending: false })
+    .limit(500);
+  const group = asUuid(groupId);
+  if (group) query = query.eq("group_id", group);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
 }

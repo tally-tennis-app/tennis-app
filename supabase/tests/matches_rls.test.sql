@@ -1,366 +1,120 @@
--- Row Level Security and verification rules for matches.
---
--- As in groups_rls.test.sql, every assertion that matters runs as the
--- unprivileged authenticated role with real JWT claims.
-
 begin;
-
-select plan(36);
-
-insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
-                        email_confirmed_at, created_at, updated_at,
-                        raw_app_meta_data, raw_user_meta_data)
-values
-  ('11111111-1111-1111-1111-111111111111', '00000000-0000-0000-0000-000000000000',
-   'authenticated', 'authenticated', 'ada@example.com', 'x', now(), now(), now(),
-   '{}'::jsonb, '{"display_name": "Ada"}'::jsonb),
-  ('22222222-2222-2222-2222-222222222222', '00000000-0000-0000-0000-000000000000',
-   'authenticated', 'authenticated', 'bo@example.com', 'x', now(), now(), now(),
-   '{}'::jsonb, '{"display_name": "Bo"}'::jsonb),
-  ('33333333-3333-3333-3333-333333333333', '00000000-0000-0000-0000-000000000000',
-   'authenticated', 'authenticated', 'cal@example.com', 'x', now(), now(), now(),
-   '{}'::jsonb, '{"display_name": "Cal"}'::jsonb),
-  ('44444444-4444-4444-4444-444444444444', '00000000-0000-0000-0000-000000000000',
-   'authenticated', 'authenticated', 'dee@example.com', 'x', now(), now(), now(),
-   '{}'::jsonb, '{"display_name": "Dee"}'::jsonb);
-
--- Ada organizes a group that Bo and Dee join. Cal is an outsider.
+select no_plan();
+insert into auth.users(id,email,raw_user_meta_data) values
+ ('11111111-1111-1111-1111-111111111111','match-a@example.com','{"display_name":"Ada"}'),
+ ('22222222-2222-2222-2222-222222222222','match-b@example.com','{"display_name":"Bo"}'),
+ ('33333333-3333-3333-3333-333333333333','match-c@example.com','{"display_name":"Cal"}'),
+ ('44444444-4444-4444-4444-444444444444','match-d@example.com','{"display_name":"Dee"}');
+insert into public.groups(id,name,invite_code,created_by) values
+ ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','Match group','MATCH001','11111111-1111-1111-1111-111111111111'),
+ ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb','Other group','MATCH002','44444444-4444-4444-4444-444444444444');
+insert into public.group_members(group_id,user_id) values
+ ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','22222222-2222-2222-2222-222222222222'),
+ ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','33333333-3333-3333-3333-333333333333');
+-- Helpers are SECURITY INVOKER; they do not elevate assertions.
+create function pg_temp.submit_sql(opponent uuid default '22222222-2222-2222-2222-222222222222') returns text language sql as $$
+ select format('select set_config(''test.match'', (public.submit_match(''aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'',%L,''completed'',''11111111-1111-1111-1111-111111111111'',''[{"set_number":1,"games_a":6,"games_b":2,"complete":true},{"set_number":2,"games_a":6,"games_b":4,"complete":true}]'')).id::text,true)',opponent)
+$$;
+create function pg_temp.act_sql(action text) returns text language sql as $$
+ select format('select public.%I(nullif(current_setting(''test.match'',true),'''')::uuid)',action)
+$$;
+create function pg_temp.edit_sql(score jsonb default '[{"set_number":1,"games_a":6,"games_b":0,"complete":true},{"set_number":2,"games_a":7,"games_b":5,"complete":true}]') returns text language sql as $$
+ select format('select public.edit_match(nullif(current_setting(''test.match'',true),'''')::uuid,''completed'',''11111111-1111-1111-1111-111111111111'',%L::jsonb,current_date-2)',score)
+$$;
+set local role anon;
+select throws_ok(pg_temp.submit_sql(), '42501', null, 'anonymous cannot submit');
 set local role authenticated;
-set local request.jwt.claims to
-  '{"sub": "11111111-1111-1111-1111-111111111111", "role": "authenticated"}';
-select public.create_group('Tuesday Ladder');
-
+set local request.jwt.claims = '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated"}';
+select throws_ok(pg_temp.submit_sql(), '42501', null, 'outsider cannot submit into another group');
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select throws_ok(pg_temp.submit_sql('11111111-1111-1111-1111-111111111111'), '22023', null, 'cannot play yourself');
+select throws_ok(pg_temp.submit_sql('44444444-4444-4444-4444-444444444444'), '42501', null, 'cannot submit cross-group opponent');
+select lives_ok(pg_temp.submit_sql(), 'participant submits a pending match atomically');
+select results_eq('select status from public.matches', $$values ('pending'::text)$$, 'submitted match is pending');
+select results_eq('select sum(wins)::int from public.group_standings', $$values (0)$$, 'pending match does not count');
+select throws_ok(pg_temp.act_sql('confirm_match'), '42501', null, 'submitter cannot confirm their own match');
+select throws_ok(pg_temp.act_sql('reject_match'), '42501', null, 'submitter cannot reject own match');
+select throws_ok($$insert into public.matches(group_id,player_a,player_b,played_on,outcome,winner,submitted_by) values ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','11111111-1111-1111-1111-111111111111','22222222-2222-2222-2222-222222222222',current_date,'walkover','11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-111111111111')$$, '42501', null, 'direct match insertion denied');
+select throws_ok($$insert into public.match_sets values (current_setting('test.match')::uuid,3,6,0,null,null,true)$$, '42501', null, 'direct set insertion denied');
+select throws_ok($$update public.matches set status='confirmed'$$, '42501', null, 'direct confirmation denied');
+select throws_ok($$update public.match_sets set games_a=0$$, '42501', null, 'direct set update denied');
+select throws_ok($$delete from public.matches$$, '42501', null, 'direct match delete denied');
+select throws_ok($$delete from public.match_sets$$, '42501', null, 'direct set delete denied');
+select lives_ok(pg_temp.edit_sql(), 'submitter replaces pending score');
+select results_eq('select sum(games_a)::int from public.match_sets', $$values (13)$$, 'replacement removes old sets');
+select results_eq('select played_on from public.matches', $$values (current_date-2)$$, 'pending edit can change date');
+select throws_ok(pg_temp.edit_sql('[{"set_number":1,"games_a":6,"games_b":5,"complete":true}]'), '22023', null, 'bad replacement rejected');
+select results_eq('select sum(games_a)::int from public.match_sets', $$values (13)$$, 'failed replacement leaves original intact');
+set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}';
+select throws_ok(pg_temp.act_sql('confirm_match'), '42501', null, 'nonparticipant member cannot confirm');
+select throws_ok(pg_temp.act_sql('reject_match'), '42501', null, 'nonparticipant cannot reject');
+select throws_ok(pg_temp.act_sql('withdraw_match'), '42501', null, 'nonparticipant cannot withdraw');
+select throws_ok(pg_temp.edit_sql(), '42501', null, 'nonparticipant cannot edit');
+set local request.jwt.claims = '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated"}';
+select results_eq('select count(*)::int from public.matches', $$values (0)$$, 'unrelated member sees no matches');
+select results_eq('select count(*)::int from public.match_sets', $$values (0)$$, 'unrelated member sees no sets');
+select results_eq('select count(*)::int from public.group_standings', $$values (1)$$, 'invoker standings expose own group only');
+select throws_ok(pg_temp.act_sql('confirm_match'), '42501', null, 'outsider cannot confirm known id');
+select throws_ok($$select public.confirm_match('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee')$$, '42501', 'Match is not available', 'unknown id and unauthorized id share error');
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
+select throws_ok(pg_temp.edit_sql(), '42501', null, 'opponent cannot edit submission');
+select throws_ok(pg_temp.act_sql('withdraw_match'), '42501', null, 'opponent cannot withdraw');
+select lives_ok(pg_temp.act_sql('confirm_match'), 'opponent confirms');
+select results_eq('select status,confirmed_at is not null from public.matches', $$values ('confirmed'::text,true)$$, 'confirmation timestamp recorded');
+select results_eq($$select wins::int,losses::int,games_won::int,games_lost::int from public.group_standings where user_id='11111111-1111-1111-1111-111111111111'$$, $$values (1,0,13,5)$$, 'confirmed score moves winners standings');
+select results_eq($$select wins::int,losses::int,games_won::int,games_lost::int from public.group_standings where user_id='22222222-2222-2222-2222-222222222222'$$, $$values (0,1,5,13)$$, 'confirmed score moves opponent standings');
+select throws_ok(pg_temp.act_sql('confirm_match'), '22023', null, 'cannot confirm twice');
+select throws_ok(pg_temp.act_sql('reject_match'), '22023', null, 'cannot reject confirmed match');
+select throws_ok(pg_temp.act_sql('void_match'), '42501', null, 'player cannot void');
+select throws_ok($$update public.matches set played_on=current_date$$, '42501', null, 'confirmed date protected from direct SQL');
+select throws_ok($$delete from public.matches$$, '42501', null, 'confirmed row protected from direct SQL');
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select throws_ok(pg_temp.edit_sql(), '22023', null, 'submitter cannot edit confirmed match');
+select throws_ok(pg_temp.act_sql('withdraw_match'), '22023', null, 'submitter cannot withdraw confirmed match');
+select lives_ok($$select public.remove_group_member('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','22222222-2222-2222-2222-222222222222')$$, 'remove opponent after confirmation');
+select results_eq($$select active,losses::int from public.group_standings where user_id='22222222-2222-2222-2222-222222222222'$$, $$values (false,1)$$, 'departed player retains inactive standings');
+select throws_ok(pg_temp.submit_sql(), '42501', null, 'inactive opponent cannot receive new match');
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
+select results_eq('select count(*)::int from public.matches', $$values (0)$$, 'departed participant loses history access');
+select results_eq('select count(*)::int from public.match_sets', $$values (0)$$, 'departed participant loses set access');
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select lives_ok(pg_temp.act_sql('void_match'), 'organizer voids confirmed score');
+select results_eq('select status,voided_at is not null,played_on from public.matches', $$values ('confirmed'::text,true,current_date-2)$$, 'void preserves status and original date');
+select results_eq('select sum(games_a)::int from public.match_sets', $$values (13)$$, 'void preserves score');
+select results_eq('select sum(wins)::int from public.group_standings', $$values (0)$$, 'void excludes standings');
+select throws_ok(pg_temp.act_sql('void_match'), '22023', null, 'repeat void refused');
+select lives_ok($$select public.restore_group_member('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','22222222-2222-2222-2222-222222222222')$$, 'restore opponent');
+select lives_ok(pg_temp.submit_sql(), 'new pending match for rejection');
+select throws_ok(pg_temp.act_sql('void_match'), '22023', null, 'organizer cannot void pending match');
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
+select lives_ok(pg_temp.act_sql('reject_match'), 'opponent rejects');
+select results_eq($$select status from public.matches where id=current_setting('test.match')::uuid$$, $$values ('rejected'::text)$$, 'rejected remains history');
+select throws_ok(pg_temp.act_sql('confirm_match'), '22023', null, 'rejected cannot later confirm');
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select lives_ok(pg_temp.submit_sql(), 'new pending match for withdrawal');
+select lives_ok(pg_temp.act_sql('withdraw_match'), 'submitter withdraws pending match');
+select results_eq($$select count(*)::int from public.match_sets where match_id=current_setting('test.match')::uuid$$, $$values (0)$$, 'withdraw cascades sets');
+select lives_ok(pg_temp.submit_sql(), 'new pending match for expiry');
+-- Owner fixture backdates creation; user RPC cannot change it.
 reset role;
-create temp table ctx as select id as g, invite_code as code from public.groups;
-grant select on ctx to public;
-
+select lives_ok($$update public.matches set created_at=now()-interval '14 days 1 second' where id=current_setting('test.match')::uuid$$, 'backdate expiry fixture');
 set local role authenticated;
-set local request.jwt.claims to
-  '{"sub": "22222222-2222-2222-2222-222222222222", "role": "authenticated"}';
-select public.join_group_by_code((select code from ctx));
-set local request.jwt.claims to
-  '{"sub": "44444444-4444-4444-4444-444444444444", "role": "authenticated"}';
-select public.join_group_by_code((select code from ctx));
-
--- ------------------------------------------------------------ submission
-
-set local request.jwt.claims to
-  '{"sub": "11111111-1111-1111-1111-111111111111", "role": "authenticated"}';
-
-select throws_ok(
-  format($$ select public.submit_match(%L, %L, current_date, 'completed',
-            '[{"a":6,"b":5},{"a":6,"b":4}]') $$,
-         (select g from ctx), '22222222-2222-2222-2222-222222222222'),
-  '22023',
-  'Set 1: 6-5 is not a finished set. Sets end 6-0 to 6-4, 7-5, or 7-6',
-  'an illegal set score is refused by the database'
-);
-
-select throws_ok(
-  format($$ select public.submit_match(%L, %L, current_date, 'completed',
-            '[{"a":6,"b":1},{"a":6,"b":2}]') $$,
-         (select g from ctx), '33333333-3333-3333-3333-333333333333'),
-  '22023',
-  'Your opponent is not an active member of that group',
-  'a player cannot log a match against someone outside the group'
-);
-
-select throws_ok(
-  format($$ select public.submit_match(%L, %L, current_date, 'completed',
-            '[{"a":6,"b":1},{"a":6,"b":2}]') $$,
-         (select g from ctx), '11111111-1111-1111-1111-111111111111'),
-  '22023',
-  'Choose an opponent other than yourself',
-  'a player cannot log a match against themselves'
-);
-
-select throws_ok(
-  format($$ select public.submit_match(%L, %L, current_date + 7, 'completed',
-            '[{"a":6,"b":1},{"a":6,"b":2}]') $$,
-         (select g from ctx), '22222222-2222-2222-2222-222222222222'),
-  '22023',
-  'The date played cannot be in the future',
-  'a match cannot be dated in the future'
-);
-
-select throws_ok(
-  format($$ select public.submit_match(%L, %L, current_date, 'retired',
-            '[{"a":6,"b":1},{"a":2,"b":1}]') $$,
-         (select g from ctx), '22222222-2222-2222-2222-222222222222'),
-  '22023',
-  'Choose who won the match',
-  'a retirement needs a named winner'
-);
-
-select lives_ok(
-  format($$ select public.submit_match(%L, %L, current_date - 2, 'completed',
-            '[{"a":6,"b":4},{"a":3,"b":6},{"a":7,"b":6,"tiebreak":5}]',
-            null, 'aaaaaaaa-0000-0000-0000-000000000001') $$,
-         (select g from ctx), '22222222-2222-2222-2222-222222222222'),
-  'a group member can submit a legal three-set score'
-);
-
-select lives_ok(
-  format($$ select public.submit_match(%L, %L, current_date - 2, 'completed',
-            '[{"a":6,"b":4},{"a":3,"b":6},{"a":7,"b":6,"tiebreak":5}]',
-            null, 'aaaaaaaa-0000-0000-0000-000000000001') $$,
-         (select g from ctx), '22222222-2222-2222-2222-222222222222'),
-  'resending the same request succeeds'
-);
-
-select is(
-  (select count(*)::int from public.matches),
-  1,
-  'a resent request does not create a duplicate match'
-);
-
+select throws_ok(pg_temp.edit_sql(), '22023', null, 'expired match cannot edit');
+select throws_ok(pg_temp.act_sql('withdraw_match'), '22023', null, 'expired match cannot withdraw');
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
+select throws_ok(pg_temp.act_sql('confirm_match'), '22023', null, 'expired match cannot confirm');
+select throws_ok(pg_temp.act_sql('reject_match'), '22023', null, 'expired match cannot reject');
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select lives_ok($$select set_config('test.match',(public.submit_match('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','22222222-2222-2222-2222-222222222222','walkover','11111111-1111-1111-1111-111111111111','[]')).id::text,true)$$, 'submit walkover');
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
+select lives_ok(pg_temp.act_sql('confirm_match'), 'confirm walkover');
+select results_eq($$select wins::int,games_won::int from public.group_standings where user_id='11111111-1111-1111-1111-111111111111'$$, $$values (1,0)$$, 'walkovers count wins without games');
+-- Administrative auth deletion is the explicit immutable-history exception.
 reset role;
-create temp table m as select id from public.matches;
-grant select on m to public;
+select lives_ok($$delete from auth.users where id='22222222-2222-2222-2222-222222222222'$$, 'account deletion cascades confirmed and voided history');
 set local role authenticated;
-
-select is(
-  (select winner_id from public.matches),
-  '11111111-1111-1111-1111-111111111111'::uuid,
-  'the database derives the winner of a completed match from its sets'
-);
-
-select is(
-  (select count(*)::int from public.match_sets),
-  3,
-  'the submitter can read the sets they wrote'
-);
-
-select throws_ok(
-  format($$ insert into public.matches (group_id, submitted_by, opponent_id,
-            winner_id, outcome, played_on)
-            values (%L, %L, %L, %L, 'walkover', current_date) $$,
-         (select g from ctx), '11111111-1111-1111-1111-111111111111',
-         '22222222-2222-2222-2222-222222222222',
-         '11111111-1111-1111-1111-111111111111'),
-  '42501',
-  null,
-  'a direct insert bypassing submit_match() is refused'
-);
-
-update public.matches set status = 'confirmed', confirmed_at = now();
-
-select is(
-  (select status from public.matches),
-  'pending',
-  'a submitter cannot confirm their own match with a direct update'
-);
-
-select throws_ok(
-  format('select public.confirm_match(%L)', (select id from m)),
-  '42501',
-  'Only the opponent can confirm or reject a match',
-  'a submitter cannot confirm their own match through the function'
-);
-
--- ------------------------------------------------------------ visibility
-
-set local request.jwt.claims to
-  '{"sub": "33333333-3333-3333-3333-333333333333", "role": "authenticated"}';
-
-select is(
-  (select count(*)::int from public.matches),
-  0,
-  'an outsider cannot see the group''s matches'
-);
-
-select is(
-  (select count(*)::int from public.match_sets),
-  0,
-  'an outsider cannot see the sets of those matches'
-);
-
-set local request.jwt.claims to
-  '{"sub": "44444444-4444-4444-4444-444444444444", "role": "authenticated"}';
-
-select is(
-  (select count(*)::int from public.matches),
-  1,
-  'another member of the group can see the match'
-);
-
-select throws_ok(
-  format('select public.confirm_match(%L)', (select id from m)),
-  '42501',
-  'Only the opponent can confirm or reject a match',
-  'a third member cannot confirm someone else''s match'
-);
-
--- ------------------------------------------------------------ reject, edit
-
-set local request.jwt.claims to
-  '{"sub": "22222222-2222-2222-2222-222222222222", "role": "authenticated"}';
-
-select lives_ok(
-  format($$ select public.reject_match(%L, 'The second set was 6-2') $$,
-         (select id from m)),
-  'the opponent can reject a pending match'
-);
-
-select is(
-  (select status || ':' || rejection_reason from public.matches),
-  'rejected:The second set was 6-2',
-  'a rejection records its reason'
-);
-
-select throws_ok(
-  format($$ select public.update_match(%L, current_date, 'completed',
-            '[{"a":6,"b":1},{"a":6,"b":1}]') $$,
-         (select id from m)),
-  '42501',
-  'Only the player who submitted a match can edit it',
-  'the opponent cannot edit the submitted score'
-);
-
-set local request.jwt.claims to
-  '{"sub": "11111111-1111-1111-1111-111111111111", "role": "authenticated"}';
-
-select lives_ok(
-  format($$ select public.update_match(%L, current_date - 2, 'completed',
-            '[{"a":6,"b":4},{"a":2,"b":6},{"a":7,"b":6,"tiebreak":5}]') $$,
-         (select id from m)),
-  'the submitter can correct a rejected match'
-);
-
-select is(
-  (select status || ':' || coalesce(rejection_reason, 'none') from public.matches),
-  'pending:none',
-  'a correction goes back to pending and clears the rejection'
-);
-
-select is(
-  (select opponent_games from public.match_sets where set_number = 2),
-  6::smallint,
-  'the corrected sets replace the old ones'
-);
-
--- ------------------------------------------------------------ confirmation
-
-set local request.jwt.claims to
-  '{"sub": "22222222-2222-2222-2222-222222222222", "role": "authenticated"}';
-
-select lives_ok(
-  format('select public.confirm_match(%L)', (select id from m)),
-  'the opponent can confirm the corrected match'
-);
-
-select isnt(
-  (select confirmed_at from public.matches),
-  null,
-  'confirmation records when it happened'
-);
-
-set local request.jwt.claims to
-  '{"sub": "11111111-1111-1111-1111-111111111111", "role": "authenticated"}';
-
-select throws_ok(
-  format($$ select public.update_match(%L, current_date, 'completed',
-            '[{"a":6,"b":0},{"a":6,"b":0}]') $$,
-         (select id from m)),
-  '42501',
-  'A confirmed match cannot be changed',
-  'the submitter cannot edit a confirmed match'
-);
-
-select throws_ok(
-  format('select public.withdraw_match(%L)', (select id from m)),
-  '42501',
-  'A confirmed match cannot be withdrawn',
-  'the submitter cannot withdraw a confirmed match'
-);
-
-reset role;
-
-select throws_ok(
-  $$ update public.matches set played_on = played_on - 30 $$,
-  '42501',
-  'A confirmed match cannot be changed',
-  'even the table owner cannot redate a confirmed match'
-);
-
-select throws_ok(
-  $$ update public.match_sets set submitter_games = 0 where set_number = 1 $$,
-  '42501',
-  'A confirmed match cannot be changed',
-  'even the table owner cannot rewrite a confirmed score'
-);
-
--- ------------------------------------------------------------ voiding
-
-set local role authenticated;
-set local request.jwt.claims to
-  '{"sub": "22222222-2222-2222-2222-222222222222", "role": "authenticated"}';
-
-select throws_ok(
-  format($$ select public.void_match(%L, 'Wrong players') $$, (select id from m)),
-  '42501',
-  'Only an organizer of this group can void a match',
-  'a player cannot void a match'
-);
-
-set local request.jwt.claims to
-  '{"sub": "11111111-1111-1111-1111-111111111111", "role": "authenticated"}';
-
-select throws_ok(
-  format($$ select public.void_match(%L, '   ') $$, (select id from m)),
-  '22023',
-  'Give a reason for voiding the match',
-  'voiding needs a reason'
-);
-
-select lives_ok(
-  format($$ select public.void_match(%L, 'Logged in the wrong group') $$,
-         (select id from m)),
-  'an organizer can void a confirmed match'
-);
-
-select is(
-  (select array_agg(submitter_games::int order by set_number) from public.match_sets),
-  array[6, 2, 7],
-  'voiding leaves the score exactly as confirmed'
-);
-
--- ------------------------------------------------------------ expiry
-
-select public.submit_match((select g from ctx), '44444444-4444-4444-4444-444444444444',
-  current_date, 'walkover', '[]', '11111111-1111-1111-1111-111111111111');
-
-reset role;
-update public.matches set submitted_at = now() - interval '15 days'
-where opponent_id = '44444444-4444-4444-4444-444444444444';
-
-set local role authenticated;
-set local request.jwt.claims to
-  '{"sub": "44444444-4444-4444-4444-444444444444", "role": "authenticated"}';
-
-select throws_ok(
-  format('select public.confirm_match(%L)',
-         (select id from public.matches
-          where opponent_id = '44444444-4444-4444-4444-444444444444')),
-  '23514',
-  'That submission expired after 14 days. Ask your opponent to submit it again',
-  'a submission older than 14 days can no longer be confirmed'
-);
-
--- ------------------------------------------------------------ deletion
-
-reset role;
-
-select lives_ok(
-  $$ delete from auth.users where id = '22222222-2222-2222-2222-222222222222' $$,
-  'deleting an account still cascades through a confirmed match (ADR 0002)'
-);
-
-select is(
-  (select count(*)::int from public.matches where id = (select id from m)),
-  0,
-  'the deleted player''s matches are gone'
-);
-
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select results_eq('select count(*)::int from public.matches', $$values (0)$$, 'deleted account matches gone');
+select results_eq('select count(*)::int from public.match_sets', $$values (0)$$, 'deleted account sets gone');
 select * from finish();
 rollback;

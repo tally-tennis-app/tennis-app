@@ -1,25 +1,44 @@
 import { expect, type Browser, type Page } from "@playwright/test";
 
 /**
- * Helpers for journeys that write data. They run only against the local
- * Supabase stack: docs/product-questions.md forbids seeded tests on the shared
- * project. Set E2E_LOCAL_SUPABASE_SECRET to the `SECRET_KEY` from
- * `npx supabase status`, and E2E_LOCAL_SUPABASE_PUBLISHABLE to its
- * `PUBLISHABLE_KEY` for helpers that act as a player through the API.
+ * Helpers for journeys that create accounts and data. They run only in the
+ * integration projects that scripts/test-local-e2e.py enables, and refuse any
+ * database that is not the local CLI stack: seeded tests never touch a cloud
+ * project (docs/product-questions.md).
  */
-export const secret = process.env.E2E_LOCAL_SUPABASE_SECRET;
-const publishable = process.env.E2E_LOCAL_SUPABASE_PUBLISHABLE;
-const api = "http://127.0.0.1:54321";
-const password = "tennis-pass-1";
+function localStack() {
+  if (process.env.TEST_LOCAL_SUPABASE !== "1") {
+    throw new Error("Local integration tests require explicit opt-in.");
+  }
+  const raw = process.env.TEST_SUPABASE_URL;
+  if (!raw || raw !== process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    throw new Error("Test and app database URLs must match.");
+  }
+  const url = new URL(raw);
+  if (
+    !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname) ||
+    url.protocol !== "http:" ||
+    !url.port
+  ) {
+    throw new Error("Refusing to seed a nonlocal database.");
+  }
+  const secret = process.env.TEST_SUPABASE_SECRET_KEY;
+  const publishable = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!secret || !publishable) throw new Error("Missing local stack keys.");
+  return { api: raw, secret, publishable };
+}
+
+const password = `Tennis-test-${crypto.randomUUID().slice(0, 8)}!Aa9`;
 
 export type Player = { name: string; email: string; id: string; token: string };
 
 export async function createPlayer(name: string): Promise<Player> {
-  const email = `${name.toLowerCase()}-${crypto.randomUUID().slice(0, 8)}@tenny.test`;
+  const { api, secret, publishable } = localStack();
+  const email = `${name.toLowerCase()}-${crypto.randomUUID().slice(0, 8)}@example.test`;
   const created = await fetch(`${api}/auth/v1/admin/users`, {
     method: "POST",
     headers: {
-      apikey: secret!,
+      apikey: secret,
       Authorization: `Bearer ${secret}`,
       "content-type": "application/json",
     },
@@ -34,10 +53,7 @@ export async function createPlayer(name: string): Promise<Player> {
 
   const session = await fetch(`${api}/auth/v1/token?grant_type=password`, {
     method: "POST",
-    headers: {
-      apikey: publishable ?? secret!,
-      "content-type": "application/json",
-    },
+    headers: { apikey: publishable, "content-type": "application/json" },
     body: JSON.stringify({ email, password }),
   }).then((response) => response.json());
 
@@ -50,10 +66,11 @@ export async function rpc(
   fn: string,
   args: Record<string, unknown>,
 ) {
+  const { api, publishable } = localStack();
   const response = await fetch(`${api}/rest/v1/rpc/${fn}`, {
     method: "POST",
     headers: {
-      apikey: publishable ?? secret!,
+      apikey: publishable,
       Authorization: `Bearer ${player.token}`,
       "content-type": "application/json",
     },
@@ -64,6 +81,8 @@ export async function rpc(
   return body ? JSON.parse(body) : null;
 }
 
+// The test runner's browser.newContext() applies the project's options, so a
+// mobile project signs players in on the mobile device profile.
 export async function signIn(browser: Browser, player: Player): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   await page.goto("/login");
@@ -76,6 +95,7 @@ export async function signIn(browser: Browser, player: Player): Promise<Page> {
 
 /** A group organized by the first player, joined by the rest. */
 export async function groupOf(organizer: Player, ...members: Player[]) {
+  const { api, publishable } = localStack();
   const groupId: string = await rpc(organizer, "create_group", {
     group_name: `Ladder ${crypto.randomUUID().slice(0, 6)}`,
   });
@@ -83,7 +103,7 @@ export async function groupOf(organizer: Player, ...members: Player[]) {
     `${api}/rest/v1/groups?id=eq.${groupId}&select=invite_code`,
     {
       headers: {
-        apikey: publishable ?? secret!,
+        apikey: publishable,
         Authorization: `Bearer ${organizer.token}`,
       },
     },
@@ -93,3 +113,17 @@ export async function groupOf(organizer: Player, ...members: Player[]) {
   }
   return groupId;
 }
+
+/** A best-of-three score in the database's set format. */
+export function sets(...games: [number, number][]) {
+  return games.map(([a, b], index) => ({
+    set_number: index + 1,
+    games_a: a,
+    games_b: b,
+    tiebreak_a: null,
+    tiebreak_b: null,
+    complete: true,
+  }));
+}
+
+export const today = () => new Date().toISOString().slice(0, 10);

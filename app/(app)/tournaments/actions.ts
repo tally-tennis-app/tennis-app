@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/src/lib/auth/dal";
 import { userFacingMessage } from "@/src/lib/errors";
 import { asUuid, field, success, type ActionState } from "@/src/lib/forms";
+import { echoValues, readSubmission } from "@/src/lib/matches/submission";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
 
 type Supabase = Awaited<ReturnType<typeof createSupabaseServerClient>>;
@@ -138,38 +139,25 @@ export async function submitTournamentMatch(
   _previous: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireUser();
+  const user = await requireUser();
   const tieId = asUuid(field(formData, "tieId"));
-  if (!tieId) return { error: "That tie could not be found." };
+  const opponent = asUuid(field(formData, "opponent"));
+  if (!tieId || !opponent) return { error: "That tie could not be found." };
 
-  const values = Object.fromEntries(
-    [...formData.entries()]
-      .filter(
-        ([name, value]) => !name.startsWith("$") && typeof value === "string",
-      )
-      .map(([name, value]) => [name, value as string]),
-  );
-
-  let sets: unknown = [];
-  try {
-    sets = JSON.parse(field(formData, "sets") || "[]");
-  } catch {
-    sets = [];
-  }
+  const submission = readSubmission(formData, user.id, opponent);
+  if (!submission.ok)
+    return { error: submission.error, values: echoValues(formData) };
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.rpc("submit_tournament_match", {
     target_tie: tieId,
-    played: field(formData, "playedOn"),
-    match_outcome: field(formData, "outcome"),
-    sets: sets as never,
-    winner: asUuid(field(formData, "winner")),
-    request: asUuid(field(formData, "requestId")),
+    ...submission.value,
   });
-  if (error) return { error: userFacingMessage(error), values };
+  if (error)
+    return { error: userFacingMessage(error), values: echoValues(formData) };
 
   revalidatePath("/tournaments", "layout");
   revalidatePath("/matches");
   revalidatePath("/dashboard");
-  redirect(`/matches/${data}?submitted=1`);
+  redirect(`/matches/${data.id}?submitted=1`);
 }

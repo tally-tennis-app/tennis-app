@@ -32,10 +32,10 @@ const outcomeLabels = {
 } as const;
 
 function timeline(match: MatchView) {
-  const events: { label: string; at: string; detail?: string | null }[] = [
-    { label: `Submitted by ${match.submitter.name}`, at: match.submittedAt },
-  ];
-  if (match.rejectedAt) {
+  const events: { label: string; at: string | null; detail?: string | null }[] =
+    [{ label: `Submitted by ${match.submitter.name}`, at: match.submittedAt }];
+  // Rejections are not timestamped in the schema, so this entry has no date.
+  if (match.status === "rejected") {
     events.push({
       label: `Rejected by ${match.opponent.name}`,
       at: match.rejectedAt,
@@ -82,8 +82,8 @@ export default async function MatchPage({
   const isOpponent = match.opponent.id === viewer.id;
   const role = await getGroupRole(match.group.id);
   const canVoid = role === "organizer" && match.status === "confirmed";
-  const canEdit =
-    isSubmitter && ["pending", "rejected", "expired"].includes(match.status);
+  // edit_match() and withdraw_match() accept only a pending, unexpired match.
+  const canEdit = isSubmitter && match.status === "pending";
   const rated = Object.keys(match.ratingDeltas).length > 0;
 
   return (
@@ -150,8 +150,8 @@ export default async function MatchPage({
           tone="critical"
           title={`${match.opponent.name} rejected this score`}
         >
-          {match.rejectionReason ? `“${match.rejectionReason}” ` : null}
-          Correct it and send it again, or withdraw it.
+          {match.rejectionReason ? `“${match.rejectionReason}” ` : null}A
+          rejected result does not count. Log the correct score as a new match.
         </Alert>
       ) : null}
 
@@ -159,7 +159,7 @@ export default async function MatchPage({
         <Alert tone="info" title="This submission expired">
           {match.opponent.name} did not respond within {EXPIRY_DAYS} days, so it
           does not count.{" "}
-          {isSubmitter ? "Edit it to send it again, or withdraw it." : null}
+          {isSubmitter ? "Log it again as a new match if it was played." : null}
         </Alert>
       ) : null}
 
@@ -173,12 +173,23 @@ export default async function MatchPage({
         <Scoreline match={match} size="lg" />
       </Panel>
 
-      {canEdit || canVoid ? (
+      {canEdit ||
+      canVoid ||
+      (isSubmitter &&
+        ["rejected", "expired"].includes(match.status) &&
+        !match.tournament) ? (
         <div className="flex flex-wrap gap-3">
+          {isSubmitter &&
+          ["rejected", "expired"].includes(match.status) &&
+          !match.tournament ? (
+            <ButtonLink href={`/matches/new?group=${match.group.id}`}>
+              Log the correct score
+            </ButtonLink>
+          ) : null}
           {canEdit ? (
             <ButtonLink href={`/matches/${match.id}/edit`} variant="secondary">
               <PencilSimpleIcon aria-hidden weight="bold" className="size-4" />
-              {match.status === "pending" ? "Edit score" : "Correct and resend"}
+              Edit score
             </ButtonLink>
           ) : null}
           {canEdit ? <WithdrawMatchButton matchId={match.id} /> : null}
@@ -225,9 +236,11 @@ export default async function MatchPage({
                 <span className="text-ink-strong font-semibold">
                   {event.label}
                 </span>
-                <span className="text-muted text-sm">
-                  {formatDate(event.at)}
-                </span>
+                {event.at ? (
+                  <span className="text-muted text-sm">
+                    {formatDate(event.at)}
+                  </span>
+                ) : null}
                 {event.detail ? (
                   <span className="text-sm">“{event.detail}”</span>
                 ) : null}

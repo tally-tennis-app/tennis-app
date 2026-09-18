@@ -1,4 +1,4 @@
-# Decision 0003: First tournament format
+# Decision 0004: First tournament format
 
 - **Status:** Accepted. The product owner chose single elimination and delegated the
   fine print below.

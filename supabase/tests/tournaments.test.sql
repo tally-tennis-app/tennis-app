@@ -1,4 +1,4 @@
--- Single-elimination tournaments (ADR 0003), run as real players.
+-- Single-elimination tournaments (ADR 0004), run as real players.
 
 begin;
 
@@ -136,8 +136,8 @@ select throws_ok(
 
 select pg_temp.as_user('22222222-2222-2222-2222-222222222222');
 select throws_ok(
-  format($$ select public.submit_tournament_match(%L, current_date, 'completed',
-            '[{"a":6,"b":1},{"a":6,"b":1}]') $$, (select id from semi)),
+  format($$ select public.submit_tournament_match(%L, 'completed', %L,
+            '[{"set_number":1,"games_a":6,"games_b":1,"complete":true},{"set_number":2,"games_a":6,"games_b":1,"complete":true}]') $$, (select id from semi), '22222222-2222-2222-2222-222222222222'),
   '42501', 'Only the two players in this tie can submit its result',
   'only the tie''s players can submit its result'
 );
@@ -145,14 +145,14 @@ select throws_ok(
 -- Cal is seed 2 and Dee seed 3 in the other semifinal.
 select pg_temp.as_user('33333333-3333-3333-3333-333333333333');
 select lives_ok(
-  format($$ select public.submit_tournament_match(%L, current_date, 'completed',
-            '[{"a":6,"b":3},{"a":6,"b":4}]') $$, (select id from semi)),
+  format($$ select public.submit_tournament_match(%L, 'completed', %L,
+            '[{"set_number":1,"games_a":6,"games_b":3,"complete":true},{"set_number":2,"games_a":6,"games_b":4,"complete":true}]') $$, (select id from semi), '33333333-3333-3333-3333-333333333333'),
   'a player in the tie can submit its result'
 );
 select throws_ok(
-  format($$ select public.submit_tournament_match(%L, current_date, 'completed',
-            '[{"a":6,"b":0},{"a":6,"b":0}]') $$, (select id from semi)),
-  '23514', 'A result for this tie is already waiting. Confirm, reject, or correct it instead',
+  format($$ select public.submit_tournament_match(%L, 'completed', %L,
+            '[{"set_number":1,"games_a":6,"games_b":0,"complete":true},{"set_number":2,"games_a":6,"games_b":0,"complete":true}]') $$, (select id from semi), '33333333-3333-3333-3333-333333333333'),
+  '23514', 'A result for this tie is already waiting. Confirm, reject, or edit it instead',
   'a tie takes one live result at a time'
 );
 
@@ -172,9 +172,9 @@ select is(
 );
 
 select is(
-  (select count(*)::int from public.rating_history()
+  (select count(*)::int from public.get_rating_history('33333333-3333-3333-3333-333333333333')
    where match_id = (select id from semi_match)),
-  2,
+  1,
   'a tournament match counts toward ratings like any other'
 );
 
@@ -199,8 +199,8 @@ select is(
 );
 
 select pg_temp.as_user('33333333-3333-3333-3333-333333333333');
-select public.submit_tournament_match((select id from semi), current_date, 'completed',
-  '[{"a":6,"b":2},{"a":6,"b":2}]');
+select public.submit_tournament_match((select id from semi), 'completed',
+  '33333333-3333-3333-3333-333333333333', '[{"set_number":1,"games_a":6,"games_b":2,"complete":true},{"set_number":2,"games_a":6,"games_b":2,"complete":true}]');
 reset role;
 create temp table semi_match2 as select match_id as id from public.tournament_ties
   where id = (select id from semi);
@@ -211,8 +211,8 @@ select public.confirm_match((select id from semi_match2));
 
 -- Final: Bo beats Cal.
 select pg_temp.as_user('22222222-2222-2222-2222-222222222222');
-select public.submit_tournament_match((select id from final), current_date, 'completed',
-  '[{"a":7,"b":5},{"a":6,"b":4}]');
+select public.submit_tournament_match((select id from final), 'completed',
+  '22222222-2222-2222-2222-222222222222', '[{"set_number":1,"games_a":7,"games_b":5,"complete":true},{"set_number":2,"games_a":6,"games_b":4,"complete":true}]');
 reset role;
 create temp table final_match as select match_id as id from public.tournament_ties
   where id = (select id from final);

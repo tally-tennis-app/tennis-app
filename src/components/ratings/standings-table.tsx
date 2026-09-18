@@ -53,6 +53,7 @@ export function StandingsTable({
   caption: string;
   linkPlayers?: boolean;
 }) {
+  const showLast = standings.some((row) => row.lastDelta !== null);
   return (
     <div className="border-line bg-surface relative overflow-x-auto border">
       <table className="w-full text-left">
@@ -79,12 +80,14 @@ export function StandingsTable({
             >
               Form
             </th>
-            <th
-              scope="col"
-              className="hidden py-3 pr-4 text-right font-normal sm:table-cell"
-            >
-              Last
-            </th>
+            {showLast ? (
+              <th
+                scope="col"
+                className="hidden py-3 pr-4 text-right font-normal sm:table-cell"
+              >
+                Last
+              </th>
+            ) : null}
           </tr>
         </thead>
         <tbody className="divide-line divide-y">
@@ -138,13 +141,15 @@ export function StandingsTable({
                 <td className="hidden py-3 pr-4 md:table-cell">
                   <FormStrip form={row.form} />
                 </td>
-                <td className="hidden py-3 pr-4 text-right sm:table-cell">
-                  {row.lastDelta === null ? (
-                    <span className="text-muted text-sm">None</span>
-                  ) : (
-                    <RatingDelta value={row.lastDelta} />
-                  )}
-                </td>
+                {showLast ? (
+                  <td className="hidden py-3 pr-4 text-right sm:table-cell">
+                    {row.lastDelta === null ? (
+                      <span className="text-muted text-sm">None</span>
+                    ) : (
+                      <RatingDelta value={row.lastDelta} />
+                    )}
+                  </td>
+                ) : null}
               </tr>
             );
           })}

@@ -130,4 +130,4 @@ rail and page titles say "Tournaments".
    of supplied geometry. The brand owner should confirm them or supply official files.
 
 Resolved on 2026-09-18: typefaces (above) and the tournament contract
-([ADR 0003](../decisions/0003-tournaments-v1.md)).
+([ADR 0004](../decisions/0004-tournaments-v1.md)).

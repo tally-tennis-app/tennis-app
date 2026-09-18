@@ -1,14 +1,27 @@
 "use client";
 
+import { useEffect } from "react";
+
 import { TennyMark } from "@/src/components/brand";
 import { Button, ButtonLink } from "@/src/components/ui/button";
+import {
+  reportClientBoundaryError,
+  sanitizeErrorText,
+} from "@/src/lib/observability/error-report";
 
 export default function ErrorPage({
+  error,
   retry,
 }: {
   error: Error & { digest?: string };
   retry: () => void;
 }) {
+  useEffect(() => {
+    reportClientBoundaryError(error);
+  }, [error]);
+
+  const reference = sanitizeErrorText(error.digest, 80);
+
   return (
     <main
       id="main"
@@ -21,6 +34,9 @@ export default function ErrorPage({
         Something interrupted this page. Nothing you saved was lost. Try again,
         and if it keeps happening, check your connection.
       </p>
+      {reference ? (
+        <p className="type-code text-muted text-sm">Reference: {reference}</p>
+      ) : null}
       <div className="flex flex-wrap gap-3">
         <Button onClick={retry}>Try again</Button>
         <ButtonLink href="/" variant="secondary">

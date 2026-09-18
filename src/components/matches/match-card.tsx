@@ -169,7 +169,6 @@ export function Scoreline({
 
 const actionLabels = {
   confirm: "Confirm or reject",
-  review: "Review rejection",
   waiting: "Waiting for opponent",
 } as const;
 
@@ -187,7 +186,7 @@ export function MatchCard({
   const action = viewerId ? viewerAction(match, viewerId) : null;
   const viewerSide = viewerId ? sideOf(match, viewerId) : null;
   const delta = viewerId ? match.ratingDeltas[viewerId] : undefined;
-  const needsViewer = action === "confirm" || action === "review";
+  const needsViewer = action === "confirm";
 
   const body = (
     <>

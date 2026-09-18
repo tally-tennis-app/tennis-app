@@ -25,8 +25,10 @@ Read this alongside:
 
 ## 1. Current state
 
-> This section records the starting point on 2026-09-18. For what has since shipped,
-> see the progress table in §15.
+> This section records the starting point on 2026-09-18. It was written against a local
+> `main` that predated pull request #20, which had already landed the match lifecycle,
+> derived ratings, a functional shell, separate cloud environments, error reporting,
+> and recovery runbooks. For what has since shipped, see the progress table in §15.
 
 ### Already working
 
@@ -666,9 +668,17 @@ the production routes wait for the tournament product and data contract.
 
 ### Progress (2026-09-18, branch `feat/tenny-frontend`)
 
+The data layer for Segments 5 and 6 (matches, sets, the lifecycle RPCs, the rating fold,
+`get_ratings`, `get_rating_history`, and `group_standings`) comes from pull request #20
+and is already migrated in both cloud projects. This branch builds the finished
+interface on it, adds rejection and void reasons
+(`20260918140000_match_reasons.sql`), and adds tournaments
+(`20260918150000_tournaments.sql`). Operations material from #20 lives in
+[`docs/operations/`](docs/operations/).
+
 | Segment                 | State                                                                                                                                                                                                                                                                                                                                      |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 0 UI contract           | Done: [`docs/design/ui-direction.md`](docs/design/ui-direction.md). Typefaces and the tournament contract ([ADR 0003](docs/decisions/0003-tournaments-v1.md)) accepted by the product owner.                                                                                                                                               |
+| 0 UI contract           | Done: [`docs/design/ui-direction.md`](docs/design/ui-direction.md). Typefaces and the tournament contract ([ADR 0004](docs/decisions/0004-tournaments-v1.md)) accepted by the product owner.                                                                                                                                               |
 | 1 Design system         | Done: tokens with contrast tests, type roles, brand components, primitives in `src/components/ui`, domain components in `src/components/{matches,ratings,tournaments}`. Component tests stand in for a showcase route.                                                                                                                     |
 | 2 Public, auth, system  | Done: landing page, auth shell with password reveal and kept input, link-failure states, branded 404, error, and global error. Signed-in visitors go from `/` to `/dashboard`.                                                                                                                                                             |
 | 3 Shell                 | Done: `(app)` route group, five-item bottom bar and rail, header menu, skip link, offline banner, route skeleton, error and not-found boundaries inside the shell. Group context is chosen per page rather than in the shell.                                                                                                              |
@@ -688,12 +698,14 @@ below 2.5 s on a mid-range phone over 4G.
 **Still manual before inviting anyone outside the pilot.** These cannot be done from
 the repository:
 
+- Apply `20260918140000_match_reasons.sql` and `20260918150000_tournaments.sql` to the
+  preview and production projects, following
+  [`docs/operations/environments.md`](docs/operations/environments.md).
 - A screen-reader pass (VoiceOver on iOS, TalkBack on Android) over the match loop and a
   tournament.
-- Installed-PWA checks on real iOS and Android devices: install, icon mask, standalone
-  navigation, session persistence, deep links, updates, and the offline banner.
-- Error reporting, backup and restore, deploy rollback, and splitting preview from
-  production Supabase (ADR 0002).
+- Installed-PWA checks on real iOS and Android devices, per
+  [`docs/operations/device-checks.md`](docs/operations/device-checks.md).
+- Authenticated preview and production smoke tests with two real pilot accounts.
 - Brand-owner sign-off on the derived reversed lockups.
 
 ---

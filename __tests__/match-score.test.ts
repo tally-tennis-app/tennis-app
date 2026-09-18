@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   formatScore,
+  toMatchSets,
   isCompleteSet,
   validateScore,
   type SetScore,
@@ -72,8 +73,14 @@ describe("validateScore", () => {
     });
   });
 
-  it("allows a retirement before a ball was struck", () => {
-    expect(validateScore("retired", [])).toEqual({ error: null, winner: null });
+  it("needs the score as it stood when a player retired", () => {
+    expect(validateScore("retired", []).error).toMatch(/stood/);
+  });
+
+  it("rejects an unfinished set that already reached seven games", () => {
+    expect(validateScore("retired", [s(7, 3)]).error).toMatch(
+      /not a finished set/,
+    );
   });
 
   it("rejects a retirement after the match was already won", () => {
@@ -102,5 +109,36 @@ describe("formatScore", () => {
     const sets = [s(6, 4), s(6, 7, 5), s(7, 5)];
     expect(formatScore(sets)).toBe("6-4 6-7(5) 7-5");
     expect(formatScore(sets, "b")).toBe("4-6 7-6(5) 5-7");
+  });
+});
+
+describe("toMatchSets", () => {
+  it("fills in the tiebreak winner's points and marks finished sets", () => {
+    expect(toMatchSets([s(7, 6, 5), s(6, 7, 10), s(2, 1)])).toEqual([
+      {
+        set_number: 1,
+        games_a: 7,
+        games_b: 6,
+        tiebreak_a: 7,
+        tiebreak_b: 5,
+        complete: true,
+      },
+      {
+        set_number: 2,
+        games_a: 6,
+        games_b: 7,
+        tiebreak_a: 10,
+        tiebreak_b: 12,
+        complete: true,
+      },
+      {
+        set_number: 3,
+        games_a: 2,
+        games_b: 1,
+        tiebreak_a: null,
+        tiebreak_b: null,
+        complete: false,
+      },
+    ]);
   });
 });

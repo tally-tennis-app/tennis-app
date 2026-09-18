@@ -1,9 +1,10 @@
--- Segment 9: single-elimination tournaments (ADR 0003).
+-- Segment 9: single-elimination tournaments (ADR 0004).
 --
 -- A tournament is a draw of ties. Each tie is settled by an ordinary verified
 -- match, so tournament results use the same score rules, confirmation,
 -- immutability, voiding, and rating fold as every other match. Advancement
--- happens here, in the database, when a tie's match is confirmed.
+-- happens here, in the database, when a tie's match is confirmed. Written
+-- against the match model in 20260913010000_matches.sql.
 --
 -- As with matches, there are no write policies: every change goes through a
 -- SECURITY DEFINER function below.
@@ -86,10 +87,9 @@ create index tournament_events_tournament_id_idx on public.tournament_events (to
 -- --------------------------------------------------------------------------
 -- Visibility
 --
--- One SECURITY DEFINER predicate for all four tables: the group's members may
--- see a tournament, and so may its entrants, who can finish a tournament even
--- after leaving the group (ADR 0003). Policies on the child tables cannot
--- subquery tournaments without recursing, which is why this is a function.
+-- A tournament is visible to the members of its group, the same boundary as
+-- the group's matches. The predicate is a function because the child-table
+-- policies cannot subquery tournaments without recursing.
 -- --------------------------------------------------------------------------
 
 create function public.can_see_tournament(target uuid)
@@ -101,14 +101,7 @@ set search_path = ''
 as $$
   select exists (
     select 1 from public.tournaments t
-    where t.id = target
-      and (
-        public.is_group_member(t.group_id)
-        or exists (
-          select 1 from public.tournament_entrants e
-          where e.tournament_id = t.id and e.user_id = (select auth.uid())
-        )
-      )
+    where t.id = target and public.is_group_member(t.group_id)
   );
 $$;
 
@@ -126,34 +119,13 @@ create policy "tournament_ties_select_visible" on public.tournament_ties
 create policy "tournament_events_select_visible" on public.tournament_events
   for select to authenticated using (public.can_see_tournament(tournament_id));
 
--- An entrant may no longer share a group with every opponent, but must still
--- be able to read their names in the draw.
-drop policy "profiles_select_self_or_group_peer" on public.profiles;
-
-create function public.shares_tournament_with(other_user uuid)
-returns boolean
-language sql
-security definer
-stable
-set search_path = ''
-as $$
-  select exists (
-    select 1
-    from public.tournament_entrants mine
-    join public.tournament_entrants theirs on theirs.tournament_id = mine.tournament_id
-    where mine.user_id = (select auth.uid()) and theirs.user_id = other_user
-  );
-$$;
-
-create policy "profiles_select_self_or_peer"
-  on public.profiles
-  for select
-  to authenticated
-  using (
-    (select auth.uid()) = id
-    or public.shares_group_with(id)
-    or public.shares_tournament_with(id)
-  );
+-- Reads only, as for matches: every write goes through a function below.
+revoke all on public.tournaments, public.tournament_entrants,
+  public.tournament_ties, public.tournament_events from public, anon, authenticated;
+grant select on public.tournaments, public.tournament_entrants,
+  public.tournament_ties, public.tournament_events to authenticated;
+grant all on public.tournaments, public.tournament_entrants,
+  public.tournament_ties, public.tournament_events to service_role;
 
 -- --------------------------------------------------------------------------
 -- Draw mechanics (internal)
@@ -380,7 +352,7 @@ begin
   if new.status = 'confirmed' and old.status <> 'confirmed'
      and tie.match_id = new.id and tie.decided_at is null then
     update public.tournament_ties
-    set winner_id = new.winner_id, decided_by = 'match', decided_at = now()
+    set winner_id = new.winner, decided_by = 'match', decided_at = now()
     where id = tie.id;
 
     perform public.place_winner(tie.id);
@@ -564,9 +536,9 @@ begin
     into seeded
     from public.tournament_entrants e
     left join (
-      select distinct on (player_id) player_id, rating_after
-      from public.rating_fold(t.group_id)
-      order by player_id, confirmed_at desc, match_id desc
+      select distinct on (r.player_id) r.player_id, r.rating_after
+      from private.rating_events(t.group_id) r
+      order by r.player_id, r.confirmed_at desc, r.match_id desc
     ) f on f.player_id = e.user_id
     where e.tournament_id = target;
   else
@@ -603,17 +575,18 @@ begin
 end;
 $$;
 
--- Either player submits the tie's result. It is an ordinary match with a
--- link to the tie; confirming it advances the winner.
+-- Either player submits the tie's result. It is an ordinary match, validated
+-- and stored by the same functions as submit_match(), with a link to the tie;
+-- confirming it advances the winner.
 create function public.submit_tournament_match(
   target_tie uuid,
-  played date,
   match_outcome text,
+  match_winner uuid,
   sets jsonb,
-  winner uuid default null,
-  request uuid default null
+  match_played_on date default current_date,
+  match_retired_by uuid default null
 )
-returns uuid
+returns public.matches
 language plpgsql
 security definer
 set search_path = ''
@@ -624,24 +597,20 @@ declare
   t public.tournaments;
   existing public.matches;
   opponent uuid;
-  new_match uuid;
+  result public.matches;
 begin
-  if request is not null then
-    select id into new_match from public.matches
-    where submitted_by = actor and request_id = request;
-    if new_match is not null then
-      return new_match;
-    end if;
-  end if;
+  select * into tie from public.tournament_ties where id = target_tie;
+  select * into t from public.tournaments where id = tie.tournament_id;
 
+  -- Same lock order as the match functions: group, then the rows below it.
+  perform 1 from public.groups where id = t.group_id for update;
   select * into tie from public.tournament_ties where id = target_tie for update;
 
-  if not found or actor not in (tie.player_a, tie.player_b) then
+  if actor is null or not found or actor not in (tie.player_a, tie.player_b)
+     or not public.is_group_member(t.group_id) then
     raise exception 'Only the two players in this tie can submit its result'
       using errcode = '42501';
   end if;
-
-  select * into t from public.tournaments where id = tie.tournament_id;
 
   if t.status <> 'in_progress' or tie.decided_at is not null then
     raise exception 'This tie is no longer open' using errcode = '23514';
@@ -652,32 +621,37 @@ begin
     raise exception 'This tie does not have two players yet' using errcode = '23514';
   end if;
 
+  if not exists (select 1 from public.group_members
+                 where group_id = t.group_id and user_id = opponent and left_at is null) then
+    raise exception 'Both players must be active group members' using errcode = '42501';
+  end if;
+
   if tie.match_id is not null then
     select * into existing from public.matches where id = tie.match_id;
-    -- An expired submission frees the tie; anything else is still live.
-    if existing.status = 'pending' and existing.submitted_at < now() - interval '14 days' then
-      delete from public.matches where id = existing.id;
+    -- An expired or rejected submission frees the tie; a pending one is live.
+    if existing.status = 'rejected'
+       or (existing.status = 'pending' and existing.created_at < now() - interval '14 days') then
+      update public.tournament_ties set match_id = null where id = tie.id;
     else
-      raise exception 'A result for this tie is already waiting. Confirm, reject, or correct it instead'
+      raise exception 'A result for this tie is already waiting. Confirm, reject, or edit it instead'
         using errcode = '23514';
     end if;
   end if;
 
-  perform public.check_played_on(played);
+  perform public.validate_match_score(actor, opponent, match_outcome, match_winner,
+    sets, match_played_on, match_retired_by);
 
   insert into public.matches
-    (group_id, submitted_by, opponent_id, winner_id, outcome, played_on,
-     request_id, tournament_tie_id)
-  values (
-    t.group_id, actor, opponent,
-    public.resolve_match_winner(match_outcome, sets, actor, opponent, winner),
-    match_outcome, played, request, tie.id
-  )
-  returning id into new_match;
+    (group_id, player_a, player_b, played_on, outcome, retired_by, winner,
+     submitted_by, tournament_tie_id)
+  values
+    (t.group_id, actor, opponent, match_played_on, match_outcome, match_retired_by,
+     match_winner, actor, tie.id)
+  returning * into result;
 
-  perform public.write_match_sets(new_match, sets);
-  update public.tournament_ties set match_id = new_match where id = tie.id;
-  return new_match;
+  perform public.replace_match_sets(result.id, sets);
+  update public.tournament_ties set match_id = result.id where id = tie.id;
+  return result;
 end;
 $$;
 
@@ -826,7 +800,6 @@ $$;
 
 revoke execute on function
   public.can_see_tournament(uuid),
-  public.shares_tournament_with(uuid),
   public.bracket_order(integer),
   public.tournament_rounds(uuid),
   public.log_tournament_event(uuid, text, text),
@@ -839,22 +812,21 @@ revoke execute on function
   public.register_for_tournament(uuid),
   public.unregister_from_tournament(uuid),
   public.start_tournament(uuid),
-  public.submit_tournament_match(uuid, date, text, jsonb, uuid, uuid),
+  public.submit_tournament_match(uuid, text, uuid, jsonb, date, uuid),
   public.withdraw_from_tournament(uuid, uuid),
   public.decide_tie_by_organizer(uuid, uuid),
   public.cancel_tournament(uuid, text)
 from public, anon, authenticated;
 
--- The visibility predicates are called from policies, so the querying role
--- needs them.
+-- The visibility predicate is called from policies, so the querying role
+-- needs it.
 grant execute on function
   public.can_see_tournament(uuid),
-  public.shares_tournament_with(uuid),
   public.create_tournament(uuid, text, integer, text, integer),
   public.register_for_tournament(uuid),
   public.unregister_from_tournament(uuid),
   public.start_tournament(uuid),
-  public.submit_tournament_match(uuid, date, text, jsonb, uuid, uuid),
+  public.submit_tournament_match(uuid, text, uuid, jsonb, date, uuid),
   public.withdraw_from_tournament(uuid, uuid),
   public.decide_tie_by_organizer(uuid, uuid),
   public.cancel_tournament(uuid, text)

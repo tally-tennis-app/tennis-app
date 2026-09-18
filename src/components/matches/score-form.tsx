@@ -465,7 +465,7 @@ export function ScoreForm({
         )}
         {step === "review" ? (
           <SubmitButton pendingLabel="Sending…">
-            {editing ? "Save and resend" : "Send for confirmation"}
+            {editing ? "Save changes" : "Send for confirmation"}
           </SubmitButton>
         ) : (
           <Button onClick={() => go(index + 1)}>Continue</Button>

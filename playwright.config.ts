@@ -1,32 +1,52 @@
 import { defineConfig, devices } from "@playwright/test";
-
+const port = process.env.E2E_PORT ?? "3100";
+const baseURL = `http://127.0.0.1:${port}`;
+const integration = process.env.TEST_LOCAL_SUPABASE === "1";
+// Journeys that create accounts and data. They need the local stack, so they
+// run only in the integration projects that scripts/test-local-e2e.py enables.
+const dataJourneys = /(matches|tournament|accessibility-signed-in)\.spec\.ts/;
 export default defineConfig({
   testDir: "./tests/e2e",
-  fullyParallel: true,
+  fullyParallel: false,
+  workers: 2,
+  timeout: 60000,
   forbidOnly: Boolean(process.env.CI),
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",
-  use: {
-    baseURL: "http://localhost:3000",
-    trace: "on-first-retry",
-  },
+  use: { baseURL, trace: "on-first-retry" },
   projects: [
     {
       name: "chromium",
+      testIgnore: dataJourneys,
       use: { ...devices["Desktop Chrome"] },
     },
-    // The installed phone PWA is the primary surface (ADR 0001).
     {
-      name: "mobile",
+      name: "mobile-chromium",
+      testIgnore: dataJourneys,
       use: { ...devices["Pixel 7"] },
     },
+    ...(integration
+      ? [
+          {
+            name: "integration-chromium",
+            testMatch: dataJourneys,
+            use: { ...devices["Desktop Chrome"] },
+          },
+          {
+            name: "integration-mobile",
+            testMatch: dataJourneys,
+            use: { ...devices["Pixel 7"] },
+          },
+        ]
+      : []),
   ],
   webServer: {
-    // CI serves a production build: the dev server compiles each route on its
-    // first request, which is slow enough on a runner to trip assertions.
-    command: process.env.CI ? "npm run build && npm run start" : "npm run dev",
-    url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
-    timeout: 300_000,
+    command:
+      process.env.E2E_PRODUCTION === "1"
+        ? `npm run start -- --hostname 127.0.0.1 --port ${port}`
+        : `npm run dev -- --hostname 127.0.0.1 --port ${port}`,
+    url: baseURL,
+    reuseExistingServer: false,
+    timeout: 120000,
   },
 });

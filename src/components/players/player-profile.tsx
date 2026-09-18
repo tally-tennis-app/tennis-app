@@ -14,8 +14,8 @@ import {
 } from "@/src/components/ui/structure";
 import { formatDate, formatRating } from "@/src/lib/format";
 import { listMyGroupsWithRoster } from "@/src/lib/groups/queries";
-import { listMatches } from "@/src/lib/matches/queries";
-import { getNames, type PlayerProfile } from "@/src/lib/profiles/players";
+import { getMatchesByIds, listMatches } from "@/src/lib/matches/queries";
+import type { PlayerProfile } from "@/src/lib/profiles/players";
 import { getRatingHistory, getStandings } from "@/src/lib/ratings/queries";
 import { ordinal, STARTING_RATING } from "@/src/lib/ratings/types";
 
@@ -44,7 +44,20 @@ export async function PlayerProfileView({
     own ? true : g.members.some((m) => m.id === player.id),
   );
   const latest = history.slice(-HISTORY_ROWS).reverse();
-  const names = await getNames(latest.map((event) => event.opponentId));
+  // Rating events carry no opponent, so read each match for who it was against.
+  const matches = new Map(
+    (await getMatchesByIds(latest.map((event) => event.matchId))).map((m) => [
+      m.id,
+      m,
+    ]),
+  );
+  const result = (matchId: string) => {
+    const match = matches.get(matchId);
+    if (!match) return "Match";
+    const opponent =
+      match.submitter.id === player.id ? match.opponent : match.submitter;
+    return `${match.winnerId === player.id ? "Beat" : "Lost to"} ${opponent.name}`;
+  };
   const best = history.length
     ? Math.max(...history.map((event) => event.after))
     : null;
@@ -195,8 +208,7 @@ export async function PlayerProfileView({
                             href={`/matches/${event.matchId}`}
                             className="hover:underline"
                           >
-                            {event.won ? "Beat " : "Lost to "}
-                            {names.get(event.opponentId) ?? "Former player"}
+                            {result(event.matchId)}
                           </Link>
                         </td>
                         <td className="py-3 pr-4 text-right">

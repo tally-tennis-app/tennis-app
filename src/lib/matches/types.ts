@@ -34,13 +34,14 @@ export type MatchView = {
 export const EXPIRY_DAYS = 14;
 
 /**
- * Pending items expire after 14 days. No job flips a stored flag: the status
- * is computed whenever it is read (docs/product-questions.md).
+ * Pending items expire 14 days after they were created; edits do not extend
+ * that. No job flips a stored flag: the status is computed whenever it is read
+ * (docs/product-questions.md).
  */
 export function deriveStatus(
   row: {
     status: string;
-    submitted_at: string;
+    created_at: string;
     voided_at: string | null;
   },
   now = Date.now(),
@@ -48,7 +49,7 @@ export function deriveStatus(
   if (row.voided_at) return "voided";
   if (row.status === "confirmed") return "confirmed";
   if (row.status === "rejected") return "rejected";
-  const age = now - new Date(row.submitted_at).getTime();
+  const age = now - new Date(row.created_at).getTime();
   return age > EXPIRY_DAYS * 86_400_000 ? "expired" : "pending";
 }
 
@@ -58,16 +59,16 @@ export function sideOf(match: MatchView, playerId: string): Side | null {
   return null;
 }
 
-export type ViewerAction = "confirm" | "review" | "waiting" | null;
+export type ViewerAction = "confirm" | "waiting" | null;
 
-/** What, if anything, this match needs from the viewer. */
+/**
+ * What, if anything, this match needs from the viewer. A rejection is final
+ * (the submitter logs a fresh result), so it asks nothing of anyone.
+ */
 export function viewerAction(match: MatchView, viewerId: string): ViewerAction {
   if (match.status === "pending") {
     if (match.opponent.id === viewerId) return "confirm";
     if (match.submitter.id === viewerId) return "waiting";
-  }
-  if (match.status === "rejected" && match.submitter.id === viewerId) {
-    return "review";
   }
   return null;
 }

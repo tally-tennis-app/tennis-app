@@ -120,25 +120,31 @@ export type Database = {
       }
       match_sets: {
         Row: {
+          complete: boolean
+          games_a: number
+          games_b: number
           match_id: string
-          opponent_games: number
           set_number: number
-          submitter_games: number
-          tiebreak_points: number | null
+          tiebreak_a: number | null
+          tiebreak_b: number | null
         }
         Insert: {
+          complete: boolean
+          games_a: number
+          games_b: number
           match_id: string
-          opponent_games: number
           set_number: number
-          submitter_games: number
-          tiebreak_points?: number | null
+          tiebreak_a?: number | null
+          tiebreak_b?: number | null
         }
         Update: {
+          complete?: boolean
+          games_a?: number
+          games_b?: number
           match_id?: string
-          opponent_games?: number
           set_number?: number
-          submitter_games?: number
-          tiebreak_points?: number | null
+          tiebreak_a?: number | null
+          tiebreak_b?: number | null
         }
         Relationships: [
           {
@@ -156,60 +162,57 @@ export type Database = {
           created_at: string
           group_id: string
           id: string
-          opponent_id: string
           outcome: string
           played_on: string
-          rejected_at: string | null
+          player_a: string
+          player_b: string
           rejection_reason: string | null
-          request_id: string | null
+          retired_by: string | null
           status: string
-          submitted_at: string
           submitted_by: string
           tournament_tie_id: string | null
           void_reason: string | null
           voided_at: string | null
           voided_by: string | null
-          winner_id: string
+          winner: string
         }
         Insert: {
           confirmed_at?: string | null
           created_at?: string
           group_id: string
           id?: string
-          opponent_id: string
           outcome: string
-          played_on: string
-          rejected_at?: string | null
+          played_on?: string
+          player_a: string
+          player_b: string
           rejection_reason?: string | null
-          request_id?: string | null
+          retired_by?: string | null
           status?: string
-          submitted_at?: string
           submitted_by: string
           tournament_tie_id?: string | null
           void_reason?: string | null
           voided_at?: string | null
           voided_by?: string | null
-          winner_id: string
+          winner: string
         }
         Update: {
           confirmed_at?: string | null
           created_at?: string
           group_id?: string
           id?: string
-          opponent_id?: string
           outcome?: string
           played_on?: string
-          rejected_at?: string | null
+          player_a?: string
+          player_b?: string
           rejection_reason?: string | null
-          request_id?: string | null
+          retired_by?: string | null
           status?: string
-          submitted_at?: string
           submitted_by?: string
           tournament_tie_id?: string | null
           void_reason?: string | null
           voided_at?: string | null
           voided_by?: string | null
-          winner_id?: string
+          winner?: string
         }
         Relationships: [
           {
@@ -220,8 +223,22 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "matches_opponent_id_fkey"
-            columns: ["opponent_id"]
+            foreignKeyName: "matches_player_a_fkey"
+            columns: ["player_a"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_player_b_fkey"
+            columns: ["player_b"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_retired_by_fkey"
+            columns: ["retired_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -248,8 +265,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "matches_winner_id_fkey"
-            columns: ["winner_id"]
+            foreignKeyName: "matches_winner_fkey"
+            columns: ["winner"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -511,7 +528,35 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      group_standings: {
+        Row: {
+          active: boolean | null
+          display_name: string | null
+          games_lost: number | null
+          games_won: number | null
+          group_id: string | null
+          losses: number | null
+          matches_played: number | null
+          user_id: string | null
+          wins: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       active_organizer_count: {
@@ -524,8 +569,34 @@ export type Database = {
         Args: { reason: string; target: string }
         Returns: undefined
       }
-      check_played_on: { Args: { played: string }; Returns: undefined }
-      confirm_match: { Args: { target_match: string }; Returns: undefined }
+      confirm_match: {
+        Args: { target_match: string }
+        Returns: {
+          confirmed_at: string | null
+          created_at: string
+          group_id: string
+          id: string
+          outcome: string
+          played_on: string
+          player_a: string
+          player_b: string
+          rejection_reason: string | null
+          retired_by: string | null
+          status: string
+          submitted_by: string
+          tournament_tie_id: string | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          winner: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "matches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_group: { Args: { group_name: string }; Returns: string }
       create_tournament: {
         Args: {
@@ -541,60 +612,172 @@ export type Database = {
         Args: { target_tie: string; winner: string }
         Returns: undefined
       }
+      edit_match: {
+        Args: {
+          match_outcome: string
+          match_played_on?: string
+          match_retired_by?: string
+          match_winner: string
+          sets: Json
+          target_match: string
+        }
+        Returns: {
+          confirmed_at: string | null
+          created_at: string
+          group_id: string
+          id: string
+          outcome: string
+          played_on: string
+          player_a: string
+          player_b: string
+          rejection_reason: string | null
+          retired_by: string | null
+          status: string
+          submitted_by: string
+          tournament_tie_id: string | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          winner: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "matches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      get_rating_history: {
+        Args: { p_group_id?: string; p_player_id: string }
+        Returns: {
+          confirmed_at: string
+          delta: number
+          group_id: string
+          match_id: string
+          player_id: string
+          rating_after: number
+          rating_before: number
+        }[]
+      }
+      get_ratings: {
+        Args: { p_group_id?: string }
+        Returns: {
+          active: boolean
+          display_name: string
+          matches_played: number
+          player_id: string
+          rating: number
+        }[]
+      }
       is_group_member: { Args: { target_group: string }; Returns: boolean }
       is_group_organizer: { Args: { target_group: string }; Returns: boolean }
+      is_legal_match_set: {
+        Args: { a: number; b: number; done: boolean; ta: number; tb: number }
+        Returns: boolean
+      }
       is_withdrawn: {
         Args: { player: string; target: string }
         Returns: boolean
       }
       join_group_by_code: { Args: { code: string }; Returns: string }
       leave_group: { Args: { target_group: string }; Returns: undefined }
-      lock_match_for_response: {
+      lock_member_match: {
         Args: { target_match: string }
-        Returns: undefined
+        Returns: {
+          confirmed_at: string | null
+          created_at: string
+          group_id: string
+          id: string
+          outcome: string
+          played_on: string
+          player_a: string
+          player_b: string
+          rejection_reason: string | null
+          retired_by: string | null
+          status: string
+          submitted_by: string
+          tournament_tie_id: string | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          winner: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "matches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       log_tournament_event: {
         Args: { event_detail: string; event_kind: string; target: string }
         Returns: undefined
       }
-      match_score_winner: {
-        Args: { match_outcome: string; sets: Json }
-        Returns: string
-      }
       place_winner: { Args: { target_tie: string }; Returns: undefined }
-      rating_fold: {
-        Args: { target_group?: string }
-        Returns: {
-          confirmed_at: string
-          group_id: string
-          match_id: string
-          opponent_id: string
-          player_id: string
-          rating_after: number
-          rating_before: number
-          won: boolean
-        }[]
-      }
-      rating_history: {
-        Args: { target_group?: string; target_player?: string }
-        Returns: {
-          confirmed_at: string
-          group_id: string
-          match_id: string
-          opponent_id: string
-          player_id: string
-          rating_after: number
-          rating_before: number
-          won: boolean
-        }[]
-      }
       register_for_tournament: { Args: { target: string }; Returns: undefined }
-      reject_match: {
-        Args: { reason?: string; target_match: string }
-        Returns: undefined
-      }
+      reject_match:
+        | {
+            Args: { target_match: string }
+            Returns: {
+              confirmed_at: string | null
+              created_at: string
+              group_id: string
+              id: string
+              outcome: string
+              played_on: string
+              player_a: string
+              player_b: string
+              rejection_reason: string | null
+              retired_by: string | null
+              status: string
+              submitted_by: string
+              tournament_tie_id: string | null
+              void_reason: string | null
+              voided_at: string | null
+              voided_by: string | null
+              winner: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "matches"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: { reason: string; target_match: string }
+            Returns: {
+              confirmed_at: string | null
+              created_at: string
+              group_id: string
+              id: string
+              outcome: string
+              played_on: string
+              player_a: string
+              player_b: string
+              rejection_reason: string | null
+              retired_by: string | null
+              status: string
+              submitted_by: string
+              tournament_tie_id: string | null
+              void_reason: string | null
+              voided_at: string | null
+              voided_by: string | null
+              winner: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "matches"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       remove_group_member: {
         Args: { target_group: string; target_user: string }
+        Returns: undefined
+      }
+      replace_match_sets: {
+        Args: { sets: Json; target_match: string }
         Returns: undefined
       }
       require_tournament_organizer: {
@@ -623,16 +806,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      resolve_match_winner: {
-        Args: {
-          match_outcome: string
-          named_winner: string
-          sets: Json
-          side_a: string
-          side_b: string
-        }
-        Returns: string
-      }
       restore_group_member: {
         Args: { target_group: string; target_user: string }
         Returns: undefined
@@ -647,73 +820,157 @@ export type Database = {
       }
       settle_tournament: { Args: { target: string }; Returns: undefined }
       shares_group_with: { Args: { other_user: string }; Returns: boolean }
-      shares_tournament_with: { Args: { other_user: string }; Returns: boolean }
-      standings: {
-        Args: { target_group?: string }
-        Returns: {
-          display_name: string
-          form: string
-          is_active: boolean
-          last_delta: number
-          losses: number
-          played: number
-          player_id: string
-          rating: number
-          wins: number
-        }[]
-      }
       start_tournament: { Args: { target: string }; Returns: undefined }
       submit_match: {
         Args: {
           match_outcome: string
+          match_played_on?: string
+          match_retired_by?: string
+          match_winner: string
           opponent: string
-          played: string
-          request?: string
           sets: Json
           target_group: string
-          winner?: string
         }
-        Returns: string
+        Returns: {
+          confirmed_at: string | null
+          created_at: string
+          group_id: string
+          id: string
+          outcome: string
+          played_on: string
+          player_a: string
+          player_b: string
+          rejection_reason: string | null
+          retired_by: string | null
+          status: string
+          submitted_by: string
+          tournament_tie_id: string | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          winner: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "matches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       submit_tournament_match: {
         Args: {
           match_outcome: string
-          played: string
-          request?: string
+          match_played_on?: string
+          match_retired_by?: string
+          match_winner: string
           sets: Json
           target_tie: string
-          winner?: string
         }
-        Returns: string
+        Returns: {
+          confirmed_at: string | null
+          created_at: string
+          group_id: string
+          id: string
+          outcome: string
+          played_on: string
+          player_a: string
+          player_b: string
+          rejection_reason: string | null
+          retired_by: string | null
+          status: string
+          submitted_by: string
+          tournament_tie_id: string | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          winner: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "matches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       tournament_rounds: { Args: { target: string }; Returns: number }
       unregister_from_tournament: {
         Args: { target: string }
         Returns: undefined
       }
-      update_match: {
+      validate_match_score: {
         Args: {
+          a: string
+          b: string
           match_outcome: string
-          played: string
+          match_played_on: string
+          match_retired_by: string
+          match_winner: string
           sets: Json
-          target_match: string
-          winner?: string
         }
         Returns: undefined
       }
-      void_match: {
-        Args: { reason: string; target_match: string }
-        Returns: undefined
-      }
+      void_match:
+        | {
+            Args: { target_match: string }
+            Returns: {
+              confirmed_at: string | null
+              created_at: string
+              group_id: string
+              id: string
+              outcome: string
+              played_on: string
+              player_a: string
+              player_b: string
+              rejection_reason: string | null
+              retired_by: string | null
+              status: string
+              submitted_by: string
+              tournament_tie_id: string | null
+              void_reason: string | null
+              voided_at: string | null
+              voided_by: string | null
+              winner: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "matches"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: { reason: string; target_match: string }
+            Returns: {
+              confirmed_at: string | null
+              created_at: string
+              group_id: string
+              id: string
+              outcome: string
+              played_on: string
+              player_a: string
+              player_b: string
+              rejection_reason: string | null
+              retired_by: string | null
+              status: string
+              submitted_by: string
+              tournament_tie_id: string | null
+              void_reason: string | null
+              voided_at: string | null
+              voided_by: string | null
+              winner: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "matches"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       withdraw_from_tournament: {
         Args: { player?: string; target: string }
         Returns: undefined
       }
       withdraw_match: { Args: { target_match: string }; Returns: undefined }
-      write_match_sets: {
-        Args: { sets: Json; target_match: string }
-        Returns: undefined
-      }
     }
     Enums: {
       [_ in never]: never

@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+__pycache__/
+*.py[cod]
 
 # next.js
 /.next/
@@ -29,6 +31,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+
+# database backup artifacts
+/backups/
+*.sql.gz
 
 # env files (can opt-in for committing if needed)
 .env*
