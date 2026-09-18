@@ -57,7 +57,7 @@ jobs:
   database:
     name: database
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -84,6 +84,21 @@ jobs:
       # have no enforcement.
       - name: Run Row Level Security policy tests
         run: npx supabase test db
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # Journeys that write data run here, against this job's throwaway stack,
+      # never against the shared project (docs/product-questions.md). Without
+      # these variables the same specs skip themselves in the quality job.
+      - name: Run end-to-end journeys against the local stack
+        run: |
+          status="$(npx supabase status -o json 2>/dev/null)"
+          export NEXT_PUBLIC_SUPABASE_URL="$(jq -r .API_URL <<<"$status")"
+          export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="$(jq -r .PUBLISHABLE_KEY <<<"$status")"
+          export E2E_LOCAL_SUPABASE_PUBLISHABLE="$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+          export E2E_LOCAL_SUPABASE_SECRET="$(jq -r .SECRET_KEY <<<"$status")"
+          npx playwright test
 
       # This machine has no container runtime, so the generated types are
       # produced here and downloaded to be committed. Once committed, this step

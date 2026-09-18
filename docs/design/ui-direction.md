@@ -67,8 +67,8 @@ They are derived and marked in the stylesheet.
 
 ## Type
 
-The PDF's text is outlined, so no family names are recorded. These are matched by
-glyph comparison and must be confirmed by the brand owner:
+The PDF's text is outlined, so it records no family names. The families below were
+matched by glyph comparison and **accepted by the product owner on 2026-09-18**:
 
 - **Schibsted Grotesk** for everything, 400 to 900.
 - **DM Mono** for labels and invite codes.
@@ -110,9 +110,10 @@ another player's profile. Navigation is a bottom bar on compact screens, with pr
 and account in the header menu. On `lg` and wider, the same destinations sit in a left
 rail with a "Log a match" button.
 
-Until tournaments exist, the four destinations are Home, Matches, Standings, and
-Groups; a Tournaments item would be a dead control. When Segment 9 ships, Tournaments
-takes a slot and Standings moves to the dashboard, group views, and the header menu.
+The five destinations are Home, Matches, Tournaments, Standings, and Groups, which is
+the ceiling: five items keep 44px targets on a 320px screen. In the bottom bar the
+Tournaments item is labelled "Events", because the full word does not fit at 64px; the
+rail and page titles say "Tournaments".
 
 ## Interaction patterns
 
@@ -125,11 +126,8 @@ takes a slot and Standings moves to the dashboard, group views, and the header m
 
 ## Open decisions
 
-These are needed before the segments that depend on them:
+1. **Official reversed lockups.** The dark-mode lockups and flat ball are recolourings
+   of supplied geometry. The brand owner should confirm them or supply official files.
 
-1. **Tournament contract (blocks Segment 9).** The recommendation is
-   single-elimination, singles, group-scoped, using normal verified matches. It still
-   needs eligibility, entrant cap, seeding, byes, organizer powers, scheduling,
-   withdrawals, cancellation, and when results enter ratings.
-2. **Typeface confirmation.** Confirm or name the families above.
-3. **Official reversed lockups.** Confirm or replace the derived files.
+Resolved on 2026-09-18: typefaces (above) and the tournament contract
+([ADR 0003](../decisions/0003-tournaments-v1.md)).

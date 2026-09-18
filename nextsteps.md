@@ -25,6 +25,9 @@ Read this alongside:
 
 ## 1. Current state
 
+> This section records the starting point on 2026-09-18. For what has since shipped,
+> see the progress table in §15.
+
 ### Already working
 
 | Area           | State                                                                                                               |
@@ -663,22 +666,35 @@ the production routes wait for the tournament product and data contract.
 
 ### Progress (2026-09-18, branch `feat/tenny-frontend`)
 
-| Segment                 | State                                                                                                                                                                                                                                                    |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0 UI contract           | Done: [`docs/design/ui-direction.md`](docs/design/ui-direction.md). Tournament contract proposed in [ADR 0003](docs/decisions/0003-tournaments-v1.md), awaiting acceptance.                                                                              |
-| 1 Design system         | Done: tokens with contrast tests, type roles, brand components, primitives in `src/components/ui`, domain components in `src/components/{matches,ratings}`. Component tests stand in for a showcase route.                                               |
-| 2 Public, auth, system  | Done: landing page, split auth shell, password reveal, kept input after errors, link-failure states, branded 404, error, and global error. Signed-in visitors go from `/` to `/dashboard`.                                                               |
-| 3 Shell                 | Done: `(app)` route group, bottom bar and rail, header menu, skip link, offline banner, route skeleton. No group switcher in the shell; group context is chosen per page.                                                                                |
-| 4 Groups                | Done: cards, create and join dialogs, tabbed group page, manage page with confirmed role, remove, restore, transfer, rotate, and leave flows.                                                                                                            |
-| 5 Matches               | Done: migration, RLS, RPCs, 36 policy tests, guided score form, list with filters and paging, detail with confirm, reject, edit, withdraw, and void.                                                                                                     |
-| 6 Standings and ratings | Done: derived fold with the ADR 0002 backdating regression test (15 tests), overall and group standings, rating history.                                                                                                                                 |
-| 7 Dashboard             | Done, without the tournament pulse.                                                                                                                                                                                                                      |
-| 8 Profile and settings  | Done: own and other-player profiles, display-name editing, settings. Account deletion is information only, as required.                                                                                                                                  |
-| 9 Tournaments           | Blocked on ADR 0003.                                                                                                                                                                                                                                     |
-| 10 Hardening            | Started: mobile Chromium Playwright project and a two-account match-loop journey. Still open: axe or manual screen-reader audit, 200% zoom and landscape checks, real-device PWA checks, performance budgets, and running the local-stack journey in CI. |
+| Segment                 | State                                                                                                                                                                                                                                                                                                                                      |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 0 UI contract           | Done: [`docs/design/ui-direction.md`](docs/design/ui-direction.md). Typefaces and the tournament contract ([ADR 0003](docs/decisions/0003-tournaments-v1.md)) accepted by the product owner.                                                                                                                                               |
+| 1 Design system         | Done: tokens with contrast tests, type roles, brand components, primitives in `src/components/ui`, domain components in `src/components/{matches,ratings,tournaments}`. Component tests stand in for a showcase route.                                                                                                                     |
+| 2 Public, auth, system  | Done: landing page, auth shell with password reveal and kept input, link-failure states, branded 404, error, and global error. Signed-in visitors go from `/` to `/dashboard`.                                                                                                                                                             |
+| 3 Shell                 | Done: `(app)` route group, five-item bottom bar and rail, header menu, skip link, offline banner, route skeleton, error and not-found boundaries inside the shell. Group context is chosen per page rather than in the shell.                                                                                                              |
+| 4 Groups                | Done: cards, create and join dialogs, tabbed group page, manage page with role, remove, restore, transfer, rotate, and leave flows.                                                                                                                                                                                                        |
+| 5 Matches               | Done: schema, RLS, RPCs, and 36 policy tests; guided score form; list with URL filters and paging; detail with confirm, reject, edit, withdraw, and void.                                                                                                                                                                                  |
+| 6 Standings and ratings | Done: derived fold with the ADR 0002 backdating regression test, overall and group standings with ties, rating history.                                                                                                                                                                                                                    |
+| 7 Dashboard             | Done, including the tournament pulse.                                                                                                                                                                                                                                                                                                      |
+| 8 Profile and settings  | Done. Account deletion is information only, as this roadmap requires.                                                                                                                                                                                                                                                                      |
+| 9 Tournaments           | Done: schema, RLS, draw with standard seeding and byes, advancement on confirmation, voiding, withdrawal, walkover, no-show, cancellation, event log, 34 policy tests, bracket UI, organizer tools, and a creation-to-champion journey. The create flow is one ordered page rather than separate steps, since it asks six short questions. |
+| 10 Hardening            | Automated items done: axe WCAG 2.2 AA checks and 320px and landscape reflow on every route, mobile and desktop Playwright journeys run in CI against a throwaway local stack, and budgets below.                                                                                                                                           |
 
-The current execution edge is **accepting ADR 0003**, then Segment 9, then the
-remaining Segment 10 items.
+**Performance budgets**, measured on a production build with seeded data: every route
+currently ships 155 to 176 KB of compressed JavaScript and 247 to 275 KB in total, with
+no layout shift. Budgets: at most 200 KB of JavaScript per route, CLS below 0.1, and LCP
+below 2.5 s on a mid-range phone over 4G.
+
+**Still manual before inviting anyone outside the pilot.** These cannot be done from
+the repository:
+
+- A screen-reader pass (VoiceOver on iOS, TalkBack on Android) over the match loop and a
+  tournament.
+- Installed-PWA checks on real iOS and Android devices: install, icon mask, standalone
+  navigation, session persistence, deep links, updates, and the offline banner.
+- Error reporting, backup and restore, deploy rollback, and splitting preview from
+  production Supabase (ADR 0002).
+- Brand-owner sign-off on the derived reversed lockups.
 
 ---
 

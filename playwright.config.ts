@@ -22,9 +22,11 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run dev",
+    // CI serves a production build: the dev server compiles each route on its
+    // first request, which is slow enough on a runner to trip assertions.
+    command: process.env.CI ? "npm run build && npm run start" : "npm run dev",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 300_000,
   },
 });

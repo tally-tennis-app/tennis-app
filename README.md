@@ -1,6 +1,8 @@
 # Tennis App
 
-An online-first tennis community app for logging verified match scores, deriving fair standings, and coordinating the next match. The current repository is the application foundation; authentication, groups, matches, ratings, and tournaments have not been implemented yet.
+Tenny is an online-first tennis community app: players log match scores that their opponent confirms, standings and ratings are derived from those verified results, and organizers run groups and single-elimination tournaments. It ships as an installable web app (see [ADR 0001](docs/decisions/0001-online-first-pwa.md)).
+
+The design contract lives in [`docs/design/ui-direction.md`](docs/design/ui-direction.md) and the roadmap in [`nextsteps.md`](nextsteps.md).
 
 ## Prerequisites
 
@@ -21,7 +23,7 @@ npm run dev
 
 Replace the example values in `.env.local` with the development project's browser-safe Supabase URL and publishable key. Never commit `.env.local`, service-role keys, database passwords, or access tokens.
 
-Open [http://localhost:3000](http://localhost:3000). The current landing page does not contact Supabase, so it can be previewed before credentials are added.
+Open [http://localhost:3000](http://localhost:3000). The landing page does not contact Supabase, so it can be previewed before credentials are added. Everything behind sign-in needs a database: `npm run db:start` runs the local Supabase stack (a container runtime is required), and `.env.example` shows how to point `.env.local` at it.
 
 ## Commands
 
@@ -34,12 +36,24 @@ Open [http://localhost:3000](http://localhost:3000). The current landing page do
 | `npm run lint`         | Run ESLint                              |
 | `npm run typecheck`    | Check TypeScript without emitting files |
 | `npm test`             | Run unit and component tests once       |
-| `npm run test:e2e`     | Run the Chromium foundation smoke test  |
+| `npm run test:e2e`     | Run Playwright on desktop and mobile    |
+| `npm run db:test`      | Run the database policy tests           |
 
 Install the Playwright browser once before the first local end-to-end run:
 
 ```bash
 npx playwright install chromium
+```
+
+Journeys that create accounts and data (the match loop, a full tournament, and the
+signed-in accessibility audit) skip themselves unless pointed at the local stack. They
+never run against a hosted project:
+
+```bash
+npm run db:start
+export E2E_LOCAL_SUPABASE_SECRET="$(npx supabase status -o json | jq -r .SECRET_KEY)"
+export E2E_LOCAL_SUPABASE_PUBLISHABLE="$(npx supabase status -o json | jq -r .PUBLISHABLE_KEY)"
+npm run test:e2e
 ```
 
 ## Collaboration

@@ -1,59 +1,25 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import { createPlayer, secret, signIn } from "./local-stack";
 
 /**
  * The primary product loop with two real accounts: create a group, join it,
  * submit a score, confirm it as the opponent, and watch the standings move.
- *
- * It writes users and data, so it runs only against the local Supabase stack
- * (docs/product-questions.md forbids seeded tests on the shared project). Set
- * E2E_LOCAL_SUPABASE_SECRET to the `SECRET_KEY` from `npx supabase status`.
+ * Runs only against the local stack; see local-stack.ts.
  */
-const secret = process.env.E2E_LOCAL_SUPABASE_SECRET;
-const api = "http://127.0.0.1:54321";
-
 test.skip(!secret, "needs the local Supabase stack");
-
-async function createUser(name: string) {
-  const email = `${name.toLowerCase()}-${crypto.randomUUID().slice(0, 8)}@tenny.test`;
-  const response = await fetch(`${api}/auth/v1/admin/users`, {
-    method: "POST",
-    headers: {
-      apikey: secret!,
-      Authorization: `Bearer ${secret}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      email,
-      password: "tennis-pass-1",
-      email_confirm: true,
-      user_metadata: { display_name: name },
-    }),
-  });
-  expect(response.ok).toBe(true);
-  return email;
-}
-
-async function signIn(page: Page, email: string) {
-  await page.goto("/login");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password", { exact: true }).fill("tennis-pass-1");
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/dashboard/);
-}
 
 test("a score goes from submission to confirmed standings", async ({
   browser,
 }) => {
   const suffix = crypto.randomUUID().slice(0, 6);
-  const [adaEmail, boEmail] = await Promise.all([
-    createUser(`Ada${suffix}`),
-    createUser(`Bo${suffix}`),
+  const [adaPlayer, boPlayer] = await Promise.all([
+    createPlayer(`Ada${suffix}`),
+    createPlayer(`Bo${suffix}`),
   ]);
-  const ada = await (await browser.newContext()).newPage();
-  const bo = await (await browser.newContext()).newPage();
 
   // Ada creates a group from the first-run dashboard.
-  await signIn(ada, adaEmail);
+  const ada = await signIn(browser, adaPlayer);
   await ada.getByRole("button", { name: "Create group" }).click();
   await ada.getByLabel("Group name").fill(`Ladder ${suffix}`);
   await ada
@@ -66,7 +32,7 @@ test("a score goes from submission to confirmed standings", async ({
   const code = (await ada.locator(".type-code").first().textContent())!.trim();
 
   // Bo joins with the code.
-  await signIn(bo, boEmail);
+  const bo = await signIn(browser, boPlayer);
   await bo.getByRole("button", { name: "Join group" }).first().click();
   await bo.getByLabel("Invite code").fill(code);
   await bo
