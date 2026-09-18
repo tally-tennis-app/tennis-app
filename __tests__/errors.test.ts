@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  genericErrorMessage,
-  userFacingMessage,
-} from "@/src/lib/groups/errors";
+import { genericErrorMessage, userFacingMessage } from "@/src/lib/errors";
 
 describe("userFacingMessage", () => {
   it.each([

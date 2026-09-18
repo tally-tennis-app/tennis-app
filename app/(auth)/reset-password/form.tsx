@@ -4,28 +4,43 @@ import Link from "next/link";
 import { useActionState } from "react";
 
 import { requestPasswordReset } from "@/app/(auth)/actions";
-import { emptyAuthFormState } from "@/app/(auth)/form-state";
-import { Field, FormStatus, SubmitButton } from "@/app/(auth)/_components/form";
+import { FormMessage } from "@/src/components/ui/feedback";
+import { Field } from "@/src/components/ui/field";
+import { SubmitButton } from "@/src/components/ui/submit-button";
+import { emptyActionState } from "@/src/lib/forms";
 
-export default function ResetPasswordPage() {
+export default function Form() {
   const [state, formAction] = useActionState(
     requestPasswordReset,
-    emptyAuthFormState,
+    emptyActionState,
   );
 
   return (
     <>
-      <h1 className="text-2xl font-semibold">Reset your password</h1>
-      <form action={formAction} className="flex flex-col gap-4">
-        <Field label="Email" name="email" type="email" autoComplete="email" />
-        <FormStatus state={state} />
-        <SubmitButton>Send reset link</SubmitButton>
+      <div className="flex flex-col gap-2">
+        <h1 className="type-title">Reset your password</h1>
+        <p className="text-muted">
+          We will email you a link to choose a new password.
+        </p>
+      </div>
+      <form action={formAction} className="flex flex-col gap-5">
+        <Field
+          label="Email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+          defaultValue={state.values?.email}
+        />
+        <FormMessage error={state.error} notice={state.notice} />
+        <SubmitButton pendingLabel="Sending…">Send reset link</SubmitButton>
       </form>
-      <p className="text-muted text-sm">
-        <Link href="/login" className="underline">
-          Back to sign in
-        </Link>
-      </p>
+      <Link
+        href="/login"
+        className="text-ink-strong self-start text-sm underline"
+      >
+        Back to sign in
+      </Link>
     </>
   );
 }

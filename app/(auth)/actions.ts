@@ -3,14 +3,9 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import type { AuthFormState } from "@/app/(auth)/form-state";
 import { safeRedirectPath, signedInLandingPath } from "@/src/lib/auth/routes";
+import { field, type ActionState } from "@/src/lib/forms";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
-
-function field(formData: FormData, name: string): string {
-  const value = formData.get(name);
-  return typeof value === "string" ? value.trim() : "";
-}
 
 /**
  * Absolute origin for links Supabase puts in emails.
@@ -33,16 +28,49 @@ async function requestOrigin(): Promise<string> {
   return `${protocol}://${host}`;
 }
 
+/**
+ * Supabase auth messages are written for developers. The few a player can
+ * cause and fix get plain wording; anything else is reported generically
+ * rather than exposing the raw text.
+ */
+function authErrorMessage(message: string): string {
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("already registered") ||
+    lower.includes("already been registered")
+  ) {
+    return "That email already has an account. Sign in, or reset your password.";
+  }
+  if (
+    lower.includes("same as the old") ||
+    lower.includes("different from the old")
+  ) {
+    return "Choose a password you have not used for this account before.";
+  }
+  if (lower.includes("weak") || lower.includes("password should")) {
+    return "Choose a longer or less common password.";
+  }
+  if (lower.includes("rate limit") || lower.includes("too many")) {
+    return "Too many attempts. Wait a minute, then try again.";
+  }
+  if (lower.includes("session") || lower.includes("not authenticated")) {
+    return "Your reset link has expired. Request a new one.";
+  }
+  return "Something went wrong. Try again.";
+}
+
 export async function signIn(
-  _previous: AuthFormState,
+  _previous: ActionState,
   formData: FormData,
-): Promise<AuthFormState> {
+): Promise<ActionState> {
   const email = field(formData, "email");
   const password = field(formData, "password");
   const next = safeRedirectPath(field(formData, "next")) ?? signedInLandingPath;
 
+  const values = { email };
+
   if (!email || !password) {
-    return { error: "Enter your email and password.", notice: null };
+    return { error: "Enter your email and password.", values };
   }
 
   const supabase = await createSupabaseServerClient();
@@ -51,36 +79,32 @@ export async function signIn(
   if (error) {
     // Deliberately identical for a wrong password and an unknown address, so
     // the form cannot be used to discover which emails have accounts.
-    return { error: "That email and password do not match.", notice: null };
+    return { error: "That email and password do not match.", values };
   }
 
   redirect(next);
 }
 
 export async function signUp(
-  _previous: AuthFormState,
+  _previous: ActionState,
   formData: FormData,
-): Promise<AuthFormState> {
+): Promise<ActionState> {
   const displayName = field(formData, "displayName");
   const email = field(formData, "email");
   const password = field(formData, "password");
 
+  const values = { displayName, email };
+
   if (!displayName || !email || !password) {
-    return {
-      error: "Fill in every field to create your account.",
-      notice: null,
-    };
+    return { error: "Fill in every field to create your account.", values };
   }
 
   if (displayName.length > 50) {
-    return {
-      error: "Display name must be 50 characters or fewer.",
-      notice: null,
-    };
+    return { error: "Display name must be 50 characters or fewer.", values };
   }
 
   if (password.length < 8) {
-    return { error: "Password must be at least 8 characters.", notice: null };
+    return { error: "Password must be at least 8 characters.", values };
   }
 
   const supabase = await createSupabaseServerClient();
@@ -95,23 +119,25 @@ export async function signUp(
   });
 
   if (error) {
-    return { error: error.message, notice: null };
+    return { error: authErrorMessage(error.message), values };
   }
 
   return {
     error: null,
     notice: `Check ${email} for a confirmation link to finish setting up your account.`,
+    done: Date.now(),
+    values,
   };
 }
 
 export async function requestPasswordReset(
-  _previous: AuthFormState,
+  _previous: ActionState,
   formData: FormData,
-): Promise<AuthFormState> {
+): Promise<ActionState> {
   const email = field(formData, "email");
 
   if (!email) {
-    return { error: "Enter the email address on your account.", notice: null };
+    return { error: "Enter the email address on your account." };
   }
 
   const supabase = await createSupabaseServerClient();
@@ -123,25 +149,26 @@ export async function requestPasswordReset(
   // enumeration reason as sign-in.
   return {
     error: null,
-    notice: `If an account exists for ${email}, a reset link is on its way.`,
+    notice: `If an account exists for ${email}, a reset link is on its way. It works once and expires after an hour.`,
+    values: { email },
   };
 }
 
 export async function updatePassword(
-  _previous: AuthFormState,
+  _previous: ActionState,
   formData: FormData,
-): Promise<AuthFormState> {
+): Promise<ActionState> {
   const password = field(formData, "password");
 
   if (password.length < 8) {
-    return { error: "Password must be at least 8 characters.", notice: null };
+    return { error: "Password must be at least 8 characters." };
   }
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.updateUser({ password });
 
   if (error) {
-    return { error: error.message, notice: null };
+    return { error: authErrorMessage(error.message) };
   }
 
   redirect(signedInLandingPath);

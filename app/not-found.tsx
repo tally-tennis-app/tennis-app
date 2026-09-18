@@ -1,21 +1,25 @@
-import Link from "next/link";
+import { TennyMark } from "@/src/components/brand";
+import { ButtonLink } from "@/src/components/ui/button";
 
+export const metadata = { title: "Page not found" };
+
+// "/" sends a signed-in player on to their dashboard, so one link serves both.
 export default function NotFound() {
   return (
-    <main className="bg-canvas text-ink grid min-h-screen place-items-center px-5">
-      <div className="relative max-w-2xl text-center">
-        <p className="type-label text-accent">Error 404</p>
-        <h1 className="type-display mt-5">This court is empty.</h1>
-        <p className="text-muted mx-auto mt-6 max-w-md leading-7">
-          The page you were looking for is outside the lines.
-        </p>
-        <Link
-          href="/"
-          className="bg-action text-on-action mt-8 inline-flex min-h-12 items-center px-6 font-semibold transition-transform hover:-translate-y-0.5 active:translate-y-px"
-        >
-          Return home
-        </Link>
-      </div>
+    <main
+      id="main"
+      className="max-w-content mx-auto flex w-full flex-1 flex-col justify-center gap-6 px-4 py-16 sm:px-8"
+    >
+      <TennyMark height={56} alt="" />
+      <p className="type-label text-accent">Error 404</p>
+      <h1 className="type-display max-w-[14ch]">This court is empty.</h1>
+      <p className="text-muted max-w-prose text-lg">
+        The page you were looking for is outside the lines. It may have moved,
+        or you may not have access to it.
+      </p>
+      <ButtonLink href="/" className="self-start">
+        Return home
+      </ButtonLink>
     </main>
   );
 }

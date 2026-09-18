@@ -1,152 +1,269 @@
-import { TennyLockup } from "@/src/components/brand";
+import Image from "next/image";
+import Link from "next/link";
 
-const matchLoop = [
+import { TennyLockup, TennyMark } from "@/src/components/brand";
+import { MatchCard } from "@/src/components/matches/match-card";
+import { StandingsTable } from "@/src/components/ratings/standings-table";
+import { ButtonLink } from "@/src/components/ui/button";
+import type { MatchView } from "@/src/lib/matches/types";
+import { rankStandings, type Standing } from "@/src/lib/ratings/types";
+
+// Illustrations only, rendered with the production components and captioned
+// as examples. No page presents these as anyone's real results.
+const exampleMatch: MatchView = {
+  id: "example",
+  group: { id: "example", name: "Riverside Ladder" },
+  playedOn: "2026-09-12",
+  outcome: "completed",
+  status: "confirmed",
+  submitter: { id: "priya", name: "Priya Raman" },
+  opponent: { id: "tomas", name: "Tomás Ortega" },
+  winnerId: "priya",
+  sets: [
+    { a: 6, b: 4 },
+    { a: 3, b: 6 },
+    { a: 7, b: 6, tiebreak: 5 },
+  ],
+  submittedAt: "2026-09-12T18:02:00Z",
+  confirmedAt: "2026-09-12T19:40:00Z",
+  rejectedAt: null,
+  rejectionReason: null,
+  voidedAt: null,
+  voidReason: null,
+  ratingDeltas: {},
+};
+
+const exampleStandings: Standing[] = rankStandings([
   {
-    number: "01",
-    title: "Log the score",
-    detail: "Enter the sets. The rest of the match record is derived for you.",
+    playerId: "priya",
+    name: "Priya Raman",
+    rating: 1561.4,
+    played: 9,
+    wins: 7,
+    losses: 2,
+    form: ["W", "W", "L", "W", "W"],
+    lastDelta: 14.2,
+    active: true,
   },
   {
-    number: "02",
-    title: "Confirm the result",
-    detail: "Your opponent verifies the score before it reaches the standings.",
+    playerId: "tomas",
+    name: "Tomás Ortega",
+    rating: 1538.2,
+    played: 11,
+    wins: 7,
+    losses: 4,
+    form: ["L", "W", "W", "L", "W"],
+    lastDelta: -14.2,
+    active: true,
   },
   {
-    number: "03",
-    title: "Watch the table move",
+    playerId: "grace",
+    name: "Grace Whitfield",
+    rating: 1512.6,
+    played: 8,
+    wins: 4,
+    losses: 4,
+    form: ["W", "L", "W", "L", "L"],
+    lastDelta: 9.8,
+    active: true,
+  },
+  {
+    playerId: "okafor",
+    name: "Chidi Okafor",
+    rating: 1512.9,
+    played: 6,
+    wins: 3,
+    losses: 3,
+    form: ["L", "W", "L", "W", "W"],
+    lastDelta: -6.1,
+    active: true,
+  },
+  {
+    playerId: "lena",
+    name: "Lena Brandt",
+    rating: 1471.3,
+    played: 10,
+    wins: 3,
+    losses: 7,
+    form: ["L", "L", "W", "L", "L"],
+    lastDelta: -9.8,
+    active: true,
+  },
+]);
+
+const steps = [
+  {
+    verb: "Log",
     detail:
-      "Group records and global ratings update from the same trusted result.",
+      "Enter the sets straight after you come off court. Tenny checks the score is one tennis allows.",
+  },
+  {
+    verb: "Confirm",
+    detail:
+      "Your opponent confirms or rejects it. Nothing counts until both of you agree, and a confirmed result never changes.",
+  },
+  {
+    verb: "Rank",
+    detail:
+      "The standings move. Every rating change traces back to a match both players signed off.",
   },
 ] as const;
 
 export default function Home() {
   return (
-    <div className="bg-canvas text-ink min-h-screen overflow-hidden">
-      <header className="relative z-10 mx-auto flex w-full max-w-[90rem] items-center justify-between px-5 py-5 sm:px-8 lg:px-12">
-        <a
-          href="#top"
-          className="inline-flex items-center"
+    <div className="flex flex-1 flex-col">
+      <header className="max-w-content mx-auto flex w-full items-center justify-between gap-4 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4 sm:px-8">
+        <Link
+          href="/"
           aria-label="Tenny home"
+          className="flex min-h-11 items-center"
         >
           <TennyLockup height={28} alt="" priority />
-        </a>
-        <p className="text-muted hidden text-xs font-semibold tracking-[0.16em] uppercase sm:block">
-          Private pilot · 2026
-        </p>
+        </Link>
+        <nav aria-label="Account" className="flex items-center gap-2">
+          <ButtonLink href="/login" variant="quiet" size="sm">
+            Sign in
+          </ButtonLink>
+          <ButtonLink href="/signup" size="sm">
+            Create account
+          </ButtonLink>
+        </nav>
       </header>
 
-      <main id="top">
-        <section className="relative mx-auto grid min-h-[calc(100svh-76px)] w-full max-w-[90rem] items-center gap-12 px-5 py-10 sm:px-8 lg:grid-cols-[1.08fr_0.92fr] lg:px-12 lg:py-14">
-          <div className="relative z-10 max-w-3xl">
-            <p className="border-line bg-surface mb-6 inline-flex items-center gap-2.5 border px-3 py-2 text-xs font-semibold tracking-[0.12em] uppercase">
-              Foundation in progress
-            </p>
-            <h1 className="type-display max-w-[14ch] text-balance">
-              Your court. Your crew. Every score counts.
+      <main id="main" className="flex flex-col">
+        <section className="max-w-content mx-auto grid w-full items-center gap-12 px-4 pt-10 pb-16 sm:px-8 lg:min-h-[min(40rem,calc(100dvh-5rem))] lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:pt-8">
+          <div className="flex flex-col gap-6">
+            <h1 className="type-display max-w-[13ch] text-balance">
+              Scores both players agree on.
             </h1>
-            <p className="text-muted mt-8 max-w-xl text-lg leading-8 sm:text-xl">
-              Log verified matches, follow fair standings, and find the next
-              game, without spreadsheets or guesswork.
+            <p className="text-muted max-w-[34ch] text-lg sm:text-xl">
+              Log a match, your opponent confirms it, and your group&apos;s
+              standings move on results everyone trusts.
             </p>
-          </div>
-
-          <div className="relative mx-auto w-full max-w-2xl lg:mr-0">
-            <div
-              className="scoreboard"
-              aria-label="Example verified match score"
-            >
-              <div className="flex items-start justify-between gap-8 border-b border-white/18 pb-6">
-                <div>
-                  <p className="scoreboard-label">Saturday match</p>
-                  <p className="mt-2 text-sm text-white/60">
-                    Riverside · Court 03
-                  </p>
-                </div>
-                <span className="verified-mark">Verified</span>
-              </div>
-
-              <div className="score-row mt-8">
-                <div>
-                  <p className="scoreboard-label">Player</p>
-                  <p className="mt-2 text-xl font-semibold sm:text-2xl">
-                    M. Rivera
-                  </p>
-                </div>
-                <div className="sets" aria-label="Set scores 6, 3, 7">
-                  <span>6</span>
-                  <span className="set-lost">3</span>
-                  <span className="set-won">7</span>
-                </div>
-              </div>
-
-              <div className="score-row border-t border-white/12 pt-7">
-                <div>
-                  <p className="scoreboard-label">Challenger</p>
-                  <p className="mt-2 text-xl font-semibold sm:text-2xl">
-                    J. Park
-                  </p>
-                </div>
-                <div className="sets" aria-label="Set scores 4, 6, 5">
-                  <span className="set-lost">4</span>
-                  <span>6</span>
-                  <span className="set-lost">5</span>
-                </div>
-              </div>
-
-              <div className="mt-8 flex items-center justify-between border-t border-white/18 pt-6">
-                <p className="scoreboard-label">Global rating</p>
-                <p className="type-score text-brand-basil-light text-2xl">
-                  +18
-                </p>
-              </div>
+            <div className="flex flex-wrap gap-3">
+              <ButtonLink href="/signup">Create account</ButtonLink>
+              <ButtonLink href="/login" variant="secondary">
+                Sign in
+              </ButtonLink>
             </div>
           </div>
+
+          <figure className="relative flex flex-col gap-3 lg:pl-8">
+            <div
+              aria-hidden
+              className="struck-in -mb-6 self-start pl-2 sm:-mb-10"
+            >
+              <TennyMark height={150} alt="" priority />
+            </div>
+            <div className="shadow-(--shadow-overlay)">
+              <MatchCard match={exampleMatch} href={null} size="lg" />
+            </div>
+            <figcaption className="text-muted text-sm">
+              An example of a confirmed match.
+            </figcaption>
+          </figure>
         </section>
 
         <section
-          aria-labelledby="match-loop-title"
-          className="border-line bg-surface border-y"
+          aria-labelledby="how-title"
+          className="bg-surface border-line border-y"
         >
-          <div className="mx-auto w-full max-w-[90rem] px-5 py-16 sm:px-8 lg:px-12 lg:py-20">
-            <div className="mb-12 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-              <div>
-                <p className="type-label text-accent">The first rally</p>
-                <h2 id="match-loop-title" className="type-title mt-3 max-w-xl">
-                  One score. Three clean steps.
-                </h2>
-              </div>
-              <p className="text-muted max-w-sm text-sm leading-6">
-                Built around the result players already know, not a second set
-                of stats to maintain.
+          <div className="max-w-content mx-auto grid w-full gap-10 px-4 py-16 sm:px-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:py-24">
+            <div className="flex flex-col gap-4 lg:sticky lg:top-8 lg:self-start">
+              <h2 id="how-title" className="type-title max-w-[16ch]">
+                One result, agreed once.
+              </h2>
+              <p className="text-muted max-w-prose">
+                No spreadsheet, and no arguing over what the score was last
+                Tuesday.
               </p>
             </div>
-
-            <ol className="border-line grid border-t md:grid-cols-3">
-              {matchLoop.map((step) => (
+            <ol className="border-line flex flex-col border-t">
+              {steps.map((step) => (
                 <li
-                  key={step.number}
-                  className="border-line border-b py-8 md:border-r md:border-b-0 md:px-8 md:first:pl-0 md:last:border-r-0 md:last:pr-0"
+                  key={step.verb}
+                  className="border-line grid gap-2 border-b py-8 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-8"
                 >
-                  <span className="type-code text-accent text-xs">
-                    {step.number}
-                  </span>
-                  <h3 className="mt-8 text-xl font-semibold tracking-tight">
-                    {step.title}
-                  </h3>
-                  <p className="text-muted mt-3 max-w-xs text-sm leading-6">
-                    {step.detail}
-                  </p>
+                  <h3 className="type-title text-accent">{step.verb}</h3>
+                  <p className="max-w-prose text-lg">{step.detail}</p>
                 </li>
               ))}
             </ol>
           </div>
         </section>
+
+        <section
+          aria-labelledby="standings-title"
+          className="max-w-content mx-auto flex w-full flex-col gap-8 px-4 py-16 sm:px-8 lg:py-24"
+        >
+          <div className="flex max-w-prose flex-col gap-4">
+            <h2 id="standings-title" className="type-title">
+              Standings that explain themselves.
+            </h2>
+            <p className="text-muted text-lg">
+              Ratings only move on confirmed results, in the order they were
+              confirmed. Your group&apos;s table and your overall rating come
+              from the same matches.
+            </p>
+          </div>
+          <figure className="flex flex-col gap-3">
+            <StandingsTable
+              standings={exampleStandings}
+              caption="Example group standings"
+              linkPlayers={false}
+            />
+            <figcaption className="text-muted text-sm">
+              Example standings. Players on the same displayed rating share a
+              rank.
+            </figcaption>
+          </figure>
+        </section>
+
+        <section
+          aria-labelledby="install-title"
+          className="max-w-content mx-auto w-full px-4 pb-16 sm:px-8 lg:pb-24"
+        >
+          <div className="border-line bg-surface grid items-center gap-8 border p-6 sm:grid-cols-[auto_minmax(0,1fr)] sm:p-10">
+            <Image
+              src="/brand/tenny-app-icon.svg"
+              alt=""
+              width={96}
+              height={96}
+              className="rounded-[22%]"
+            />
+            <div className="flex flex-col gap-4">
+              <h2 id="install-title" className="type-title">
+                Lives on your home screen.
+              </h2>
+              <p className="text-muted max-w-prose">
+                Tenny installs from your browser, with no app store. It needs a
+                connection to load or save, so every score you see is current.
+              </p>
+              <dl className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <dt className="text-ink-strong font-semibold">iPhone</dt>
+                  <dd className="text-muted">
+                    In Safari, tap Share, then Add to Home Screen.
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-ink-strong font-semibold">Android</dt>
+                  <dd className="text-muted">
+                    In Chrome, open the menu, then Install app.
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+        </section>
       </main>
 
-      <footer className="bg-brand-navy text-white">
-        <div className="mx-auto flex w-full max-w-[90rem] flex-col justify-between gap-4 px-5 py-8 text-xs tracking-[0.08em] text-white/55 uppercase sm:flex-row sm:px-8 lg:px-12">
-          <p>Tenny · Built for the next match</p>
-          <p>Online-first PWA</p>
+      <footer className="border-line mt-auto border-t">
+        <div className="max-w-content mx-auto flex w-full flex-wrap items-center justify-between gap-4 px-4 py-8 pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-8">
+          <TennyLockup height={20} />
+          <p className="text-muted text-sm">
+            Verified scores and fair standings for your tennis group.
+          </p>
         </div>
       </footer>
     </div>

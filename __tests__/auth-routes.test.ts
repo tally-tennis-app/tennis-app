@@ -40,9 +40,9 @@ describe("resolveAuthRedirect", () => {
     },
   );
 
-  it("leaves a signed-in user on the marketing page", () => {
+  it("sends a signed-in user from the marketing page to their dashboard", () => {
     expect(resolveAuthRedirect({ pathname: "/", isAuthenticated: true })).toBe(
-      null,
+      "/dashboard",
     );
   });
 
