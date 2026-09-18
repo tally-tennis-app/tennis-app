@@ -661,13 +661,24 @@ design system is stable. Segments 7 and 8 may proceed in parallel after the matc
 rating contracts stabilize. Tournament visual primitives may be explored earlier, but
 the production routes wait for the tournament product and data contract.
 
-The current execution edge is **Segment 1**. Segment 0 is recorded in
-[`docs/design/ui-direction.md`](docs/design/ui-direction.md): brand assets, tokens,
-type, shape, and navigation are locked, and three decisions stay open there (the
-tournament contract, typeface confirmation, and official reversed lockups). Segment 1
-has its foundation in place: tokens, type roles, brand image components, and Tenny
-metadata and icons. The shared UI primitives, domain primitives, and showcase are
-next. Do not start by styling the dashboard in isolation.
+### Progress (2026-09-18, branch `feat/tenny-frontend`)
+
+| Segment                 | State                                                                                                                                                                                                                                                    |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0 UI contract           | Done: [`docs/design/ui-direction.md`](docs/design/ui-direction.md). Tournament contract proposed in [ADR 0003](docs/decisions/0003-tournaments-v1.md), awaiting acceptance.                                                                              |
+| 1 Design system         | Done: tokens with contrast tests, type roles, brand components, primitives in `src/components/ui`, domain components in `src/components/{matches,ratings}`. Component tests stand in for a showcase route.                                               |
+| 2 Public, auth, system  | Done: landing page, split auth shell, password reveal, kept input after errors, link-failure states, branded 404, error, and global error. Signed-in visitors go from `/` to `/dashboard`.                                                               |
+| 3 Shell                 | Done: `(app)` route group, bottom bar and rail, header menu, skip link, offline banner, route skeleton. No group switcher in the shell; group context is chosen per page.                                                                                |
+| 4 Groups                | Done: cards, create and join dialogs, tabbed group page, manage page with confirmed role, remove, restore, transfer, rotate, and leave flows.                                                                                                            |
+| 5 Matches               | Done: migration, RLS, RPCs, 36 policy tests, guided score form, list with filters and paging, detail with confirm, reject, edit, withdraw, and void.                                                                                                     |
+| 6 Standings and ratings | Done: derived fold with the ADR 0002 backdating regression test (15 tests), overall and group standings, rating history.                                                                                                                                 |
+| 7 Dashboard             | Done, without the tournament pulse.                                                                                                                                                                                                                      |
+| 8 Profile and settings  | Done: own and other-player profiles, display-name editing, settings. Account deletion is information only, as required.                                                                                                                                  |
+| 9 Tournaments           | Blocked on ADR 0003.                                                                                                                                                                                                                                     |
+| 10 Hardening            | Started: mobile Chromium Playwright project and a two-account match-loop journey. Still open: axe or manual screen-reader audit, 200% zoom and landscape checks, real-device PWA checks, performance budgets, and running the local-stack journey in CI. |
+
+The current execution edge is **accepting ADR 0003**, then Segment 9, then the
+remaining Segment 10 items.
 
 ---
 

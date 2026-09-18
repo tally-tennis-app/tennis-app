@@ -14,7 +14,7 @@ test("loads the foundation without browser errors and exposes its manifest", asy
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: "Your court. Your crew. Every score counts.",
+      name: "Scores both players agree on.",
     }),
   ).toBeVisible();
 

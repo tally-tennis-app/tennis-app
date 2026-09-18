@@ -24,7 +24,7 @@ test("offers a labelled sign-in form and a route to the other auth pages", async
   // getByLabel only resolves when the label is correctly associated, so this
   // doubles as the accessibility check for these fields.
   await expect(page.getByLabel("Email")).toBeVisible();
-  await expect(page.getByLabel("Password")).toBeVisible();
+  await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Sign in" })).toBeEnabled();
 
   await page.getByRole("link", { name: "Create an account" }).click();
@@ -58,3 +58,51 @@ test("keeps the marketing page reachable while signed out", async ({
   await page.goto("/");
   await expect(page).toHaveURL("/");
 });
+
+test("keeps typed values when signup validation fails", async ({ page }) => {
+  await page.goto("/signup");
+  await page.getByLabel("Display name").fill("Grace Whitfield");
+  await page.getByLabel("Email").fill("grace@example.com");
+  // Below the minimum, so the server refuses it without creating anything.
+  await page
+    .getByLabel("Password", { exact: true })
+    .evaluate((input) => input.removeAttribute("minlength"));
+  await page.getByLabel("Password", { exact: true }).fill("short");
+  await page.getByRole("button", { name: "Create account" }).click();
+
+  // Next adds its own role="alert" route announcer, so match by text.
+  await expect(
+    page
+      .getByRole("alert")
+      .filter({ hasText: "Password must be at least 8 characters." }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Display name")).toHaveValue("Grace Whitfield");
+  await expect(page.getByLabel("Email")).toHaveValue("grace@example.com");
+});
+
+test("lets a password be revealed without losing autofill semantics", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  const password = page.getByLabel("Password", { exact: true });
+  await password.fill("secret-value");
+  await page.getByRole("button", { name: "Show password" }).click();
+  await expect(password).toHaveAttribute("type", "text");
+  await expect(password).toHaveAttribute("autocomplete", "current-password");
+});
+
+for (const [query, title] of [
+  ["", "That link is incomplete"],
+  ["?code=not-a-real-code", "That link has expired or was already used"],
+]) {
+  test(`explains a failed email link${query ? " exchange" : ""}`, async ({
+    page,
+  }) => {
+    await page.goto(`/auth/callback${query}`);
+    await expect(page).toHaveURL(/\/login\?error=/);
+    await expect(page.getByText(title)).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Request a new link" }),
+    ).toHaveAttribute("href", "/reset-password");
+  });
+}

@@ -15,6 +15,11 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
+    // The installed phone PWA is the primary surface (ADR 0001).
+    {
+      name: "mobile",
+      use: { ...devices["Pixel 7"] },
+    },
   ],
   webServer: {
     command: "npm run dev",

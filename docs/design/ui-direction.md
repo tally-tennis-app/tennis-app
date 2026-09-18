@@ -105,10 +105,23 @@ tabular figures.
 
 ## Routes and navigation
 
-The route inventory in `nextsteps.md` §3 is accepted as written. Navigation is a
-bottom bar on compact screens (Dashboard, Matches, Groups, Tournaments), with profile
-and account in the header. On `lg` and wider, the same four destinations sit in a left
-rail. Standings is reachable from the dashboard, group views, and overflow.
+The route inventory in `nextsteps.md` §3 is accepted, plus `/players/[id]` for
+another player's profile. Navigation is a bottom bar on compact screens, with profile
+and account in the header menu. On `lg` and wider, the same destinations sit in a left
+rail with a "Log a match" button.
+
+Until tournaments exist, the four destinations are Home, Matches, Standings, and
+Groups; a Tournaments item would be a dead control. When Segment 9 ships, Tournaments
+takes a slot and Standings moves to the dashboard, group views, and the header menu.
+
+## Interaction patterns
+
+- **Dialogs and sheets:** native `<dialog>` via `src/components/ui/dialog.tsx`. It
+  docks to the bottom edge below `sm`. `ActionDialog` closes only on server success.
+- **Menus:** the native Popover API (`popover` / `popovertarget`).
+- **Tabs and filters:** links and GET forms, so every view is a shareable URL.
+- **Toasts:** none. Results appear inline and are announced through live regions;
+  consequential events are recorded on the page they affect.
 
 ## Open decisions
 
