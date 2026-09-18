@@ -118,6 +118,134 @@ export type Database = {
           },
         ]
       }
+      match_sets: {
+        Row: {
+          match_id: string
+          opponent_games: number
+          set_number: number
+          submitter_games: number
+          tiebreak_points: number | null
+        }
+        Insert: {
+          match_id: string
+          opponent_games: number
+          set_number: number
+          submitter_games: number
+          tiebreak_points?: number | null
+        }
+        Update: {
+          match_id?: string
+          opponent_games?: number
+          set_number?: number
+          submitter_games?: number
+          tiebreak_points?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_sets_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      matches: {
+        Row: {
+          confirmed_at: string | null
+          created_at: string
+          group_id: string
+          id: string
+          opponent_id: string
+          outcome: string
+          played_on: string
+          rejected_at: string | null
+          rejection_reason: string | null
+          request_id: string | null
+          status: string
+          submitted_at: string
+          submitted_by: string
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          winner_id: string
+        }
+        Insert: {
+          confirmed_at?: string | null
+          created_at?: string
+          group_id: string
+          id?: string
+          opponent_id: string
+          outcome: string
+          played_on: string
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          request_id?: string | null
+          status?: string
+          submitted_at?: string
+          submitted_by: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          winner_id: string
+        }
+        Update: {
+          confirmed_at?: string | null
+          created_at?: string
+          group_id?: string
+          id?: string
+          opponent_id?: string
+          outcome?: string
+          played_on?: string
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          request_id?: string | null
+          status?: string
+          submitted_at?: string
+          submitted_by?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          winner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matches_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_opponent_id_fkey"
+            columns: ["opponent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_winner_id_fkey"
+            columns: ["winner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -145,14 +273,64 @@ export type Database = {
         Args: { target_group: string }
         Returns: number
       }
+      check_played_on: { Args: { played: string }; Returns: undefined }
+      confirm_match: { Args: { target_match: string }; Returns: undefined }
       create_group: { Args: { group_name: string }; Returns: string }
       is_group_member: { Args: { target_group: string }; Returns: boolean }
       is_group_organizer: { Args: { target_group: string }; Returns: boolean }
       join_group_by_code: { Args: { code: string }; Returns: string }
       leave_group: { Args: { target_group: string }; Returns: undefined }
+      lock_match_for_response: {
+        Args: { target_match: string }
+        Returns: undefined
+      }
+      match_score_winner: {
+        Args: { match_outcome: string; sets: Json }
+        Returns: string
+      }
+      rating_fold: {
+        Args: { target_group?: string }
+        Returns: {
+          confirmed_at: string
+          group_id: string
+          match_id: string
+          opponent_id: string
+          player_id: string
+          rating_after: number
+          rating_before: number
+          won: boolean
+        }[]
+      }
+      rating_history: {
+        Args: { target_group?: string; target_player?: string }
+        Returns: {
+          confirmed_at: string
+          group_id: string
+          match_id: string
+          opponent_id: string
+          player_id: string
+          rating_after: number
+          rating_before: number
+          won: boolean
+        }[]
+      }
+      reject_match: {
+        Args: { reason?: string; target_match: string }
+        Returns: undefined
+      }
       remove_group_member: {
         Args: { target_group: string; target_user: string }
         Returns: undefined
+      }
+      resolve_match_winner: {
+        Args: {
+          match_outcome: string
+          named_winner: string
+          sets: Json
+          side_a: string
+          side_b: string
+        }
+        Returns: string
       }
       restore_group_member: {
         Args: { target_group: string; target_user: string }
@@ -167,6 +345,51 @@ export type Database = {
         Returns: undefined
       }
       shares_group_with: { Args: { other_user: string }; Returns: boolean }
+      standings: {
+        Args: { target_group?: string }
+        Returns: {
+          display_name: string
+          form: string
+          is_active: boolean
+          last_delta: number
+          losses: number
+          played: number
+          player_id: string
+          rating: number
+          wins: number
+        }[]
+      }
+      submit_match: {
+        Args: {
+          match_outcome: string
+          opponent: string
+          played: string
+          request?: string
+          sets: Json
+          target_group: string
+          winner?: string
+        }
+        Returns: string
+      }
+      update_match: {
+        Args: {
+          match_outcome: string
+          played: string
+          sets: Json
+          target_match: string
+          winner?: string
+        }
+        Returns: undefined
+      }
+      void_match: {
+        Args: { reason: string; target_match: string }
+        Returns: undefined
+      }
+      withdraw_match: { Args: { target_match: string }; Returns: undefined }
+      write_match_sets: {
+        Args: { sets: Json; target_match: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
@@ -185,12 +408,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -214,11 +437,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -239,11 +462,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -264,11 +487,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -281,11 +504,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
