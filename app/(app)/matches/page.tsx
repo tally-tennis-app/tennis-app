@@ -106,7 +106,7 @@ export default async function MatchesPage({
 
       {open.needsYou.length > 0 ? (
         <Section title="Needs you" id="needs-you">
-          <ul className="grid gap-3 lg:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {open.needsYou.map((match) => (
               <li key={match.id}>
                 <MatchCard match={match} viewerId={viewer.id} />
@@ -118,7 +118,7 @@ export default async function MatchesPage({
 
       {open.awaitingOpponent.length > 0 ? (
         <Section title="Waiting on your opponent" id="awaiting">
-          <ul className="grid gap-3 lg:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {open.awaitingOpponent.map((match) => (
               <li key={match.id}>
                 <MatchCard match={match} viewerId={viewer.id} />
@@ -133,7 +133,7 @@ export default async function MatchesPage({
           <form
             method="get"
             aria-label="Filter matches"
-            className="grid gap-3 sm:grid-cols-[repeat(3,minmax(0,1fr))_auto] sm:items-end"
+            className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(3,minmax(0,1fr))_auto] sm:items-end"
           >
             <FilterSelect label="Status" name="status" value={status}>
               {HISTORY_STATUSES.map((s) => (
@@ -180,7 +180,7 @@ export default async function MatchesPage({
               <p className="text-muted">Confirmed results will collect here.</p>
             )
           ) : (
-            <ul className="grid gap-3 lg:grid-cols-2">
+            <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               {historyMatches.map((match) => (
                 <li key={match.id}>
                   <MatchCard match={match} viewerId={viewer.id} />

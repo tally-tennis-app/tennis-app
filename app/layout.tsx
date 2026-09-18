@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { DM_Mono, Schibsted_Grotesk } from "next/font/google";
 import "./globals.css";
 
-// ponytail: Schibsted Grotesk and DM Mono are matched to Branding.pdf, whose
-// text is outlined. Swap here if the brand owner names different families.
+// Matched to Branding.pdf, whose text is outlined, and accepted by the product
+// owner. See docs/design/ui-direction.md before changing either family.
 const schibsted = Schibsted_Grotesk({
   variable: "--font-schibsted",
   subsets: ["latin"],

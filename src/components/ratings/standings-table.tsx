@@ -16,6 +16,7 @@ export function FormStrip({ form }: { form: FormResult[] }) {
   const wins = form.filter((result) => result === "W").length;
   return (
     <span
+      role="img"
       className="inline-flex gap-1"
       aria-label={`Last ${form.length}: ${wins} won, ${form.length - wins} lost, most recent first`}
     >
@@ -53,7 +54,7 @@ export function StandingsTable({
   linkPlayers?: boolean;
 }) {
   return (
-    <div className="border-line bg-surface overflow-x-auto border">
+    <div className="border-line bg-surface relative overflow-x-auto border">
       <table className="w-full text-left">
         <caption className="sr-only">{caption}</caption>
         <thead className="type-label text-muted border-line border-b">

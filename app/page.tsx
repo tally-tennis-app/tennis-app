@@ -131,7 +131,7 @@ export default function Home() {
       </header>
 
       <main id="main" className="flex flex-col">
-        <section className="max-w-content mx-auto grid w-full items-center gap-12 px-4 pt-10 pb-16 sm:px-8 lg:min-h-[min(40rem,calc(100dvh-5rem))] lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:pt-8">
+        <section className="max-w-content mx-auto grid w-full grid-cols-1 items-center gap-12 px-4 pt-10 pb-16 sm:px-8 lg:min-h-[min(40rem,calc(100dvh-5rem))] lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:pt-8">
           <div className="flex flex-col gap-6">
             <h1 className="type-display max-w-[13ch] text-balance">
               Scores both players agree on.
@@ -168,7 +168,7 @@ export default function Home() {
           aria-labelledby="how-title"
           className="bg-surface border-line border-y"
         >
-          <div className="max-w-content mx-auto grid w-full gap-10 px-4 py-16 sm:px-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:py-24">
+          <div className="max-w-content mx-auto grid w-full grid-cols-1 gap-10 px-4 py-16 sm:px-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:py-24">
             <div className="flex flex-col gap-4 lg:sticky lg:top-8 lg:self-start">
               <h2 id="how-title" className="type-title max-w-[16ch]">
                 One result, agreed once.
@@ -182,7 +182,7 @@ export default function Home() {
               {steps.map((step) => (
                 <li
                   key={step.verb}
-                  className="border-line grid gap-2 border-b py-8 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-8"
+                  className="border-line grid grid-cols-1 gap-2 border-b py-8 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-8"
                 >
                   <h3 className="type-title text-accent">{step.verb}</h3>
                   <p className="max-w-prose text-lg">{step.detail}</p>
@@ -223,7 +223,7 @@ export default function Home() {
           aria-labelledby="install-title"
           className="max-w-content mx-auto w-full px-4 pb-16 sm:px-8 lg:pb-24"
         >
-          <div className="border-line bg-surface grid items-center gap-8 border p-6 sm:grid-cols-[auto_minmax(0,1fr)] sm:p-10">
+          <div className="border-line bg-surface grid grid-cols-1 items-center gap-8 border p-6 sm:grid-cols-[auto_minmax(0,1fr)] sm:p-10">
             <Image
               src="/brand/tenny-app-icon.svg"
               alt=""
@@ -239,7 +239,7 @@ export default function Home() {
                 Tenny installs from your browser, with no app store. It needs a
                 connection to load or save, so every score you see is current.
               </p>
-              <dl className="grid gap-4 sm:grid-cols-2">
+              <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <dt className="text-ink-strong font-semibold">iPhone</dt>
                   <dd className="text-muted">

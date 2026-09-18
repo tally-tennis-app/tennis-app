@@ -62,7 +62,7 @@ export async function PlayerProfileView({
         {actions}
       </header>
 
-      <Panel className="grid gap-6 p-5 sm:grid-cols-2 lg:grid-cols-4">
+      <Panel className="grid grid-cols-1 gap-6 p-5 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile
           label="Overall rating"
           value={standing ? formatRating(standing.rating) : "Unrated"}
@@ -88,7 +88,7 @@ export async function PlayerProfileView({
         </div>
       </Panel>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <Section
           title="Recent matches"
           action={
@@ -156,7 +156,7 @@ export async function PlayerProfileView({
 
           <Section title="Rating history">
             {latest.length > 0 ? (
-              <div className="border-line bg-surface overflow-x-auto border">
+              <div className="border-line bg-surface relative overflow-x-auto border">
                 <table className="w-full text-left text-sm">
                   <caption className="sr-only">
                     {player.name}&apos;s rating after each confirmed match, most

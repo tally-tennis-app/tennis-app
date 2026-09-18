@@ -26,6 +26,8 @@ import { listMatches, listOpenMatches } from "@/src/lib/matches/queries";
 import { getViewer } from "@/src/lib/profiles/queries";
 import { getStandings } from "@/src/lib/ratings/queries";
 import { ordinal } from "@/src/lib/ratings/types";
+import { getTournament, listTournaments } from "@/src/lib/tournaments/queries";
+import { tieRoundName, viewerNextTie } from "@/src/lib/tournaments/types";
 
 export const metadata = { title: "Home" };
 
@@ -60,12 +62,30 @@ export default async function DashboardPage({
   }
 
   const group = groups.find((g) => g.id === asUuid(requested)) ?? groups[0];
-  const [open, recent, overall, groupStandings] = await Promise.all([
-    listOpenMatches(viewer.id),
-    listMatches({ playerId: viewer.id, status: "confirmed" }, { limit: 3 }),
-    getStandings(),
-    getStandings(group.id),
-  ]);
+  const [open, recent, overall, groupStandings, tournaments] =
+    await Promise.all([
+      listOpenMatches(viewer.id),
+      listMatches({ playerId: viewer.id, status: "confirmed" }, { limit: 3 }),
+      getStandings(),
+      getStandings(group.id),
+      listTournaments(),
+    ]);
+
+  // Tournament pulse: where the viewer stands in each event they are still in.
+  const pulse = (
+    await Promise.all(
+      tournaments
+        .filter((t) => t.status === "in_progress" && t.viewerEntered)
+        .map(async (t) => {
+          const detail = await getTournament(t.id);
+          const next = detail ? viewerNextTie(detail, viewer.id) : null;
+          return detail && next ? { detail, next } : null;
+        }),
+    )
+  ).filter((item) => item !== null);
+  const openForEntry = tournaments.filter(
+    (t) => t.status === "registration" && !t.viewerEntered,
+  );
 
   const me = overall.rated.find((row) => row.playerId === viewer.id);
   const groupMe = groupStandings.rated.find(
@@ -101,7 +121,7 @@ export default async function DashboardPage({
             ) : null
           }
         >
-          <ul className="grid gap-3 lg:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {open.needsYou.slice(0, 2).map((match) => (
               <li key={match.id}>
                 <MatchCard match={match} viewerId={viewer.id} />
@@ -112,7 +132,7 @@ export default async function DashboardPage({
       ) : null}
 
       <Section title="Your rating" id="rating">
-        <Panel className="grid gap-6 p-5 sm:grid-cols-3">
+        <Panel className="grid grid-cols-1 gap-6 p-5 sm:grid-cols-3">
           <StatTile
             label="Overall"
             value={me ? formatRating(me.rating) : "Unrated"}
@@ -158,7 +178,7 @@ export default async function DashboardPage({
             </Link>
           }
         >
-          <ul className="grid gap-3 lg:grid-cols-3">
+          <ul className="grid grid-cols-1 gap-3 lg:grid-cols-3">
             {recent.matches.map((match) => (
               <li key={match.id}>
                 <MatchCard match={match} viewerId={viewer.id} />
@@ -227,6 +247,63 @@ export default async function DashboardPage({
           </p>
         )}
       </Section>
+
+      {pulse.length > 0 || openForEntry.length > 0 ? (
+        <Section
+          title="Tournaments"
+          id="tournaments"
+          action={
+            <Link
+              href="/tournaments"
+              className="text-sm font-semibold underline"
+            >
+              All tournaments
+            </Link>
+          }
+        >
+          <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {pulse.map(({ detail, next }) => {
+              const round = tieRoundName(next.tie.round, detail.rounds);
+              const status = {
+                play: `Play ${next.opponent?.name} and log the result`,
+                respond: `Confirm or reject the result ${next.opponent?.name} logged`,
+                fix: `Correct the result ${next.opponent?.name} rejected`,
+                waiting: `Waiting for ${next.opponent?.name} to confirm`,
+                await: "Your next opponent is still being decided",
+              }[next.state];
+              return (
+                <li key={detail.id}>
+                  <Link
+                    href={`/tournaments/${detail.id}`}
+                    className={`bg-surface hover:border-line-strong flex flex-col gap-1 border p-4 ${
+                      ["play", "respond", "fix"].includes(next.state)
+                        ? "border-accent border-l-4"
+                        : "border-line"
+                    }`}
+                  >
+                    <span className="type-label text-muted">{round}</span>
+                    <span className="type-section">{detail.name}</span>
+                    <span className="text-ink">{status}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          {openForEntry.length > 0 ? (
+            <p className="text-muted">
+              <Link
+                href="/tournaments#open"
+                className="text-ink-strong font-semibold underline"
+              >
+                {openForEntry.length === 1
+                  ? `${openForEntry[0].name} is open for entry`
+                  : `${openForEntry.length} tournaments are open for entry`}
+              </Link>
+              .
+            </p>
+          ) : null}
+        </Section>
+      ) : null}
 
       {/* Thumb-reach entry point on phones, clear of the bottom navigation. */}
       <ButtonLink

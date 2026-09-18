@@ -9,6 +9,7 @@ import {
   type MatchView,
 } from "@/src/lib/matches/types";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
+import { roundsFor, tieRoundName } from "@/src/lib/tournaments/types";
 
 const matchColumns = `
   id, group_id, played_on, outcome, status, submitted_by, opponent_id,
@@ -17,7 +18,8 @@ const matchColumns = `
   groups(name),
   submitter:profiles!matches_submitted_by_fkey(display_name),
   opponent:profiles!matches_opponent_id_fkey(display_name),
-  match_sets(set_number, submitter_games, opponent_games, tiebreak_points)
+  match_sets(set_number, submitter_games, opponent_games, tiebreak_points),
+  tie:tournament_ties!matches_tournament_tie_id_fkey(round, tournament_id, tournaments(name, draw_size))
 `;
 
 type MatchRow = {
@@ -44,6 +46,11 @@ type MatchRow = {
     opponent_games: number;
     tiebreak_points: number | null;
   }[];
+  tie: {
+    round: number;
+    tournament_id: string;
+    tournaments: { name: string; draw_size: number | null } | null;
+  } | null;
 };
 
 // A profile is readable only while the viewer shares a group with its owner,
@@ -105,6 +112,16 @@ function toView(row: MatchRow, deltas: Map<string, number>): MatchView {
     voidedAt: row.voided_at,
     voidReason: row.void_reason,
     ratingDeltas,
+    tournament: row.tie?.tournaments
+      ? {
+          id: row.tie.tournament_id,
+          name: row.tie.tournaments.name,
+          round: tieRoundName(
+            row.tie.round,
+            roundsFor(row.tie.tournaments.draw_size),
+          ),
+        }
+      : null,
   };
 }
 
@@ -238,3 +255,19 @@ export const getMatch = cache(async (matchId: string) => {
   const row = data?.[0];
   return row ? toView(row, deltas) : null;
 });
+
+/** Specific matches by id, for tournament draws. */
+export async function getMatchesByIds(ids: string[]): Promise<MatchView[]> {
+  if (ids.length === 0) return [];
+  const supabase = await createSupabaseServerClient();
+  const [{ data, error }, deltas] = await Promise.all([
+    supabase
+      .from("matches")
+      .select(matchColumns)
+      .in("id", ids)
+      .overrideTypes<MatchRow[], { merge: false }>(),
+    getRatingDeltas(),
+  ]);
+  if (error) throw error;
+  return (data ?? []).map((row) => toView(row, deltas));
+}

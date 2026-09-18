@@ -27,6 +27,8 @@ export type MatchView = {
   voidReason: string | null;
   /** Rating change by player id, present once the match is rated. */
   ratingDeltas: Record<string, number>;
+  /** Set when the match settles a tournament tie. */
+  tournament?: { id: string; name: string; round: string } | null;
 };
 
 export const EXPIRY_DAYS = 14;

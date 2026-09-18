@@ -168,7 +168,7 @@ export function TabNav({
 }) {
   return (
     <nav aria-label={label} className="border-line -mx-4 border-b sm:mx-0">
-      <ul className="flex overflow-x-auto px-4 sm:px-0">
+      <ul className="relative flex overflow-x-auto px-4 sm:px-0">
         {tabs.map((tab) => {
           const active = tab.key === current;
           return (

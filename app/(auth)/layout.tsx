@@ -5,7 +5,7 @@ import { TennyLockup } from "@/src/components/brand";
 
 export default function AuthLayout({ children }: LayoutProps<"/">) {
   return (
-    <div className="grid flex-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+    <div className="grid flex-1 grid-cols-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
       {/* Fixed navy ground in both themes, so it always uses the reversed art. */}
       <aside className="bg-brand-navy hidden flex-col justify-between p-12 lg:flex">
         <Link href="/" aria-label="Tenny home" className="self-start">
@@ -23,6 +23,7 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
             alt=""
             width={351}
             height={200}
+            priority
             className="struck-in w-3/5 max-w-sm"
           />
           <p className="text-brand-paper max-w-sm text-3xl leading-tight font-extrabold tracking-tight">

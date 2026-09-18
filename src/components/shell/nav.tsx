@@ -4,17 +4,29 @@ import {
   HouseIcon,
   ListNumbersIcon,
   TennisBallIcon,
+  TrophyIcon,
   UsersThreeIcon,
 } from "@phosphor-icons/react/ssr";
 import type { Icon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// Tournaments joins here once Segment 9 ships; a nav item for a feature that
-// does not exist yet would be a dead control. Keep this at five or fewer.
-export const destinations: { href: string; label: string; icon: Icon }[] = [
+// Five at most, so the bottom bar keeps 44px targets on a 320px screen.
+// `short` is for the bottom bar, where each item is 64px wide at 320px.
+export const destinations: {
+  href: string;
+  label: string;
+  short?: string;
+  icon: Icon;
+}[] = [
   { href: "/dashboard", label: "Home", icon: HouseIcon },
   { href: "/matches", label: "Matches", icon: TennisBallIcon },
+  {
+    href: "/tournaments",
+    label: "Tournaments",
+    short: "Events",
+    icon: TrophyIcon,
+  },
   { href: "/standings", label: "Standings", icon: ListNumbersIcon },
   { href: "/groups", label: "Groups", icon: UsersThreeIcon },
 ];
@@ -66,8 +78,8 @@ export function BottomNav() {
       aria-label="Main"
       className="border-line bg-surface fixed inset-x-0 bottom-0 z-20 border-t pb-[env(safe-area-inset-bottom)] lg:hidden"
     >
-      <ul className="mx-auto grid max-w-xl grid-cols-4">
-        {destinations.map(({ href, label, icon: NavIcon }) => {
+      <ul className="mx-auto grid max-w-xl grid-cols-5">
+        {destinations.map(({ href, label, short, icon: NavIcon }) => {
           const current = isCurrent(pathname, href);
           return (
             <li key={href}>
@@ -85,7 +97,7 @@ export function BottomNav() {
                   weight={current ? "fill" : "bold"}
                   className="size-6"
                 />
-                {label}
+                {short ?? label}
               </Link>
             </li>
           );

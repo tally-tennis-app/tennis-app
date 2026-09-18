@@ -194,7 +194,10 @@ export function MatchCard({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <MatchStatusBadge status={match.status} />
         <p className="type-meta">
-          {match.group.name} · {formatPlayedOn(match.playedOn)}
+          {match.tournament
+            ? `${match.tournament.name}, ${match.tournament.round}`
+            : match.group.name}{" "}
+          · {formatPlayedOn(match.playedOn)}
         </p>
       </div>
       <Scoreline match={match} size={size} />

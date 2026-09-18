@@ -49,7 +49,7 @@ export default async function GroupsPage({
           your club? Create it and share the code.
         </EmptyState>
       ) : (
-        <ul className="grid gap-3 md:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {groups.map((group) => (
             <li key={group.id}>
               <Link

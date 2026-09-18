@@ -95,6 +95,17 @@ export default async function MatchPage({
           <span className="flex flex-wrap items-center gap-3">
             <MatchStatusBadge status={match.status} />
             <span>
+              {match.tournament ? (
+                <>
+                  <Link
+                    href={`/tournaments/${match.tournament.id}`}
+                    className="underline"
+                  >
+                    {match.tournament.name}
+                  </Link>
+                  , {match.tournament.round} ·{" "}
+                </>
+              ) : null}
               <Link href={`/groups/${match.group.id}`} className="underline">
                 {match.group.name}
               </Link>{" "}
@@ -175,7 +186,7 @@ export default async function MatchPage({
         </div>
       ) : null}
 
-      <div className="grid gap-8 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         <Section title="Rating impact">
           {rated ? (
             <dl className="flex flex-col gap-3">

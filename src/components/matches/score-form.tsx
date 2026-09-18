@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import { submitMatch, updateMatch } from "@/app/(app)/matches/actions";
+import { submitTournamentMatch } from "@/app/(app)/tournaments/actions";
 import { MatchCard } from "@/src/components/matches/match-card";
 import { Button } from "@/src/components/ui/button";
 import { Alert, FormMessage } from "@/src/components/ui/feedback";
@@ -105,18 +106,22 @@ export function ScoreForm({
   requestId,
   today,
   preselectGroup,
+  tie,
 }: {
   viewer: Person;
   groups?: GroupWithRoster[];
   /** Present when editing a pending or rejected submission. */
   initial?: ScoreFormInitial;
+  /** Present when submitting a tournament tie: the draw fixes the players. */
+  tie?: { id: string; group: Person; opponent: Person };
   requestId?: string;
   today: string;
   preselectGroup?: string;
 }) {
   const editing = Boolean(initial);
+  const fixed = initial ?? tie;
   const [state, formAction] = useActionState(
-    editing ? updateMatch : submitMatch,
+    editing ? updateMatch : tie ? submitTournamentMatch : submitMatch,
     emptyActionState,
   );
 
@@ -124,9 +129,9 @@ export function ScoreForm({
     groups.find((group) => group.id === preselectGroup) ??
     (groups.length === 1 ? groups[0] : undefined);
   const [groupId, setGroupId] = useState(
-    initial?.group.id ?? firstGroup?.id ?? "",
+    fixed?.group.id ?? firstGroup?.id ?? "",
   );
-  const [opponentId, setOpponentId] = useState(initial?.opponent.id ?? "");
+  const [opponentId, setOpponentId] = useState(fixed?.opponent.id ?? "");
   const [playedOn, setPlayedOn] = useState(initial?.playedOn ?? today);
   const [outcome, setOutcome] = useState<Outcome>(
     initial?.outcome ?? "completed",
@@ -137,23 +142,23 @@ export function ScoreForm({
   const [winner, setWinner_] = useState(initial?.winnerId ?? "");
   const [stepError, setStepError] = useState<string | null>(null);
 
-  const group = groups.find((g) => g.id === groupId) ?? initial?.group;
+  const group = groups.find((g) => g.id === groupId) ?? fixed?.group;
   const opponents =
     groups
       .find((g) => g.id === groupId)
       ?.members.filter((m) => m.id !== viewer.id) ?? [];
   const opponent =
-    opponents.find((person) => person.id === opponentId) ?? initial?.opponent;
+    opponents.find((person) => person.id === opponentId) ?? fixed?.opponent;
 
   const steps: Step[] = [
-    ...(editing ? [] : (["group", "opponent"] as Step[])),
+    ...(fixed ? [] : (["group", "opponent"] as Step[])),
     "details",
     ...(outcome === "walkover" ? [] : (["score"] as Step[])),
     ...(outcome === "completed" ? [] : (["winner"] as Step[])),
     "review",
   ];
   const [step, setStep] = useState<Step>(
-    editing ? "details" : firstGroup ? "opponent" : "group",
+    fixed ? "details" : firstGroup ? "opponent" : "group",
   );
   const index = Math.max(steps.indexOf(step), 0);
 
@@ -278,6 +283,7 @@ export function ScoreForm({
       {initial ? (
         <input type="hidden" name="matchId" value={initial.matchId} />
       ) : null}
+      {tie ? <input type="hidden" name="tieId" value={tie.id} /> : null}
 
       <ol
         aria-label="Progress"

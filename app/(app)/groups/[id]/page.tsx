@@ -139,7 +139,7 @@ async function Overview({ group }: { group: GroupDetail }) {
   const onlyMember = group.members.filter((m) => !m.leftAt).length === 1;
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
       <div className="flex flex-col gap-8">
         <Section
           title="Standings"
@@ -254,7 +254,7 @@ async function GroupMatches({ group }: { group: GroupDetail }) {
   }
   return (
     <div className="flex flex-col gap-4">
-      <ul className="grid gap-3 lg:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {matches.map((match) => (
           <li key={match.id}>
             <MatchCard match={match} viewerId={group.viewerId} />
