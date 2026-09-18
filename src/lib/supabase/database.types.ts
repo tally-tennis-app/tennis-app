@@ -166,9 +166,12 @@ export type Database = {
           played_on: string
           player_a: string
           player_b: string
+          rejection_reason: string | null
           retired_by: string | null
           status: string
           submitted_by: string
+          tournament_tie_id: string | null
+          void_reason: string | null
           voided_at: string | null
           voided_by: string | null
           winner: string
@@ -182,9 +185,12 @@ export type Database = {
           played_on?: string
           player_a: string
           player_b: string
+          rejection_reason?: string | null
           retired_by?: string | null
           status?: string
           submitted_by: string
+          tournament_tie_id?: string | null
+          void_reason?: string | null
           voided_at?: string | null
           voided_by?: string | null
           winner: string
@@ -198,9 +204,12 @@ export type Database = {
           played_on?: string
           player_a?: string
           player_b?: string
+          rejection_reason?: string | null
           retired_by?: string | null
           status?: string
           submitted_by?: string
+          tournament_tie_id?: string | null
+          void_reason?: string | null
           voided_at?: string | null
           voided_by?: string | null
           winner?: string
@@ -242,6 +251,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "matches_tournament_tie_id_fkey"
+            columns: ["tournament_tie_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_ties"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "matches_voided_by_fkey"
             columns: ["voided_by"]
             isOneToOne: false
@@ -274,6 +290,241 @@ export type Database = {
           id?: string
         }
         Relationships: []
+      }
+      tournament_entrants: {
+        Row: {
+          registered_at: string
+          seed: number | null
+          tournament_id: string
+          user_id: string
+          withdrawn_at: string | null
+        }
+        Insert: {
+          registered_at?: string
+          seed?: number | null
+          tournament_id: string
+          user_id: string
+          withdrawn_at?: string | null
+        }
+        Update: {
+          registered_at?: string
+          seed?: number | null
+          tournament_id?: string
+          user_id?: string
+          withdrawn_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_entrants_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_entrants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournament_events: {
+        Row: {
+          actor: string | null
+          created_at: string
+          detail: string | null
+          id: number
+          kind: string
+          tournament_id: string
+        }
+        Insert: {
+          actor?: string | null
+          created_at?: string
+          detail?: string | null
+          id?: never
+          kind: string
+          tournament_id: string
+        }
+        Update: {
+          actor?: string | null
+          created_at?: string
+          detail?: string | null
+          id?: never
+          kind?: string
+          tournament_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_events_actor_fkey"
+            columns: ["actor"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_events_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournament_ties: {
+        Row: {
+          deadline: string | null
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          match_id: string | null
+          player_a: string | null
+          player_b: string | null
+          position: number
+          round: number
+          tournament_id: string
+          winner_id: string | null
+        }
+        Insert: {
+          deadline?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          match_id?: string | null
+          player_a?: string | null
+          player_b?: string | null
+          position: number
+          round: number
+          tournament_id: string
+          winner_id?: string | null
+        }
+        Update: {
+          deadline?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          match_id?: string | null
+          player_a?: string | null
+          player_b?: string | null
+          position?: number
+          round?: number
+          tournament_id?: string
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_ties_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_ties_player_a_fkey"
+            columns: ["player_a"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_ties_player_b_fkey"
+            columns: ["player_b"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_ties_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_ties_winner_id_fkey"
+            columns: ["winner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournaments: {
+        Row: {
+          cancel_reason: string | null
+          cancelled_at: string | null
+          champion_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          draw_size: number | null
+          entrant_cap: number
+          group_id: string
+          id: string
+          name: string
+          round_days: number
+          seeding: string
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          champion_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          draw_size?: number | null
+          entrant_cap: number
+          group_id: string
+          id?: string
+          name: string
+          round_days?: number
+          seeding?: string
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          champion_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          draw_size?: number | null
+          entrant_cap?: number
+          group_id?: string
+          id?: string
+          name?: string
+          round_days?: number
+          seeding?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournaments_champion_id_fkey"
+            columns: ["champion_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournaments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournaments_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -312,6 +563,12 @@ export type Database = {
         Args: { target_group: string }
         Returns: number
       }
+      bracket_order: { Args: { size: number }; Returns: number[] }
+      can_see_tournament: { Args: { target: string }; Returns: boolean }
+      cancel_tournament: {
+        Args: { reason: string; target: string }
+        Returns: undefined
+      }
       confirm_match: {
         Args: { target_match: string }
         Returns: {
@@ -323,9 +580,12 @@ export type Database = {
           played_on: string
           player_a: string
           player_b: string
+          rejection_reason: string | null
           retired_by: string | null
           status: string
           submitted_by: string
+          tournament_tie_id: string | null
+          void_reason: string | null
           voided_at: string | null
           voided_by: string | null
           winner: string
@@ -338,6 +598,20 @@ export type Database = {
         }
       }
       create_group: { Args: { group_name: string }; Returns: string }
+      create_tournament: {
+        Args: {
+          cap: number
+          days_per_round?: number
+          seeding_method?: string
+          target_group: string
+          tournament_name: string
+        }
+        Returns: string
+      }
+      decide_tie_by_organizer: {
+        Args: { target_tie: string; winner: string }
+        Returns: undefined
+      }
       edit_match: {
         Args: {
           match_outcome: string
@@ -356,9 +630,12 @@ export type Database = {
           played_on: string
           player_a: string
           player_b: string
+          rejection_reason: string | null
           retired_by: string | null
           status: string
           submitted_by: string
+          tournament_tie_id: string | null
+          void_reason: string | null
           voided_at: string | null
           voided_by: string | null
           winner: string
@@ -398,6 +675,10 @@ export type Database = {
         Args: { a: number; b: number; done: boolean; ta: number; tb: number }
         Returns: boolean
       }
+      is_withdrawn: {
+        Args: { player: string; target: string }
+        Returns: boolean
+      }
       join_group_by_code: { Args: { code: string }; Returns: string }
       leave_group: { Args: { target_group: string }; Returns: undefined }
       lock_member_match: {
@@ -411,9 +692,12 @@ export type Database = {
           played_on: string
           player_a: string
           player_b: string
+          rejection_reason: string | null
           retired_by: string | null
           status: string
           submitted_by: string
+          tournament_tie_id: string | null
+          void_reason: string | null
           voided_at: string | null
           voided_by: string | null
           winner: string
@@ -425,31 +709,69 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      reject_match: {
-        Args: { target_match: string }
-        Returns: {
-          confirmed_at: string | null
-          created_at: string
-          group_id: string
-          id: string
-          outcome: string
-          played_on: string
-          player_a: string
-          player_b: string
-          retired_by: string | null
-          status: string
-          submitted_by: string
-          voided_at: string | null
-          voided_by: string | null
-          winner: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "matches"
-          isOneToOne: true
-          isSetofReturn: false
-        }
+      log_tournament_event: {
+        Args: { event_detail: string; event_kind: string; target: string }
+        Returns: undefined
       }
+      place_winner: { Args: { target_tie: string }; Returns: undefined }
+      register_for_tournament: { Args: { target: string }; Returns: undefined }
+      reject_match:
+        | {
+            Args: { target_match: string }
+            Returns: {
+              confirmed_at: string | null
+              created_at: string
+              group_id: string
+              id: string
+              outcome: string
+              played_on: string
+              player_a: string
+              player_b: string
+              rejection_reason: string | null
+              retired_by: string | null
+              status: string
+              submitted_by: string
+              tournament_tie_id: string | null
+              void_reason: string | null
+              voided_at: string | null
+              voided_by: string | null
+              winner: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "matches"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: { reason: string; target_match: string }
+            Returns: {
+              confirmed_at: string | null
+              created_at: string
+              group_id: string
+              id: string
+              outcome: string
+              played_on: string
+              player_a: string
+              player_b: string
+              rejection_reason: string | null
+              retired_by: string | null
+              status: string
+              submitted_by: string
+              tournament_tie_id: string | null
+              void_reason: string | null
+              voided_at: string | null
+              voided_by: string | null
+              winner: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "matches"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       remove_group_member: {
         Args: { target_group: string; target_user: string }
         Returns: undefined
@@ -457,6 +779,32 @@ export type Database = {
       replace_match_sets: {
         Args: { sets: Json; target_match: string }
         Returns: undefined
+      }
+      require_tournament_organizer: {
+        Args: { target: string }
+        Returns: {
+          cancel_reason: string | null
+          cancelled_at: string | null
+          champion_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          draw_size: number | null
+          entrant_cap: number
+          group_id: string
+          id: string
+          name: string
+          round_days: number
+          seeding: string
+          started_at: string | null
+          status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tournaments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       restore_group_member: {
         Args: { target_group: string; target_user: string }
@@ -470,7 +818,9 @@ export type Database = {
         Args: { new_role: string; target_group: string; target_user: string }
         Returns: undefined
       }
+      settle_tournament: { Args: { target: string }; Returns: undefined }
       shares_group_with: { Args: { other_user: string }; Returns: boolean }
+      start_tournament: { Args: { target: string }; Returns: undefined }
       submit_match: {
         Args: {
           match_outcome: string
@@ -490,9 +840,12 @@ export type Database = {
           played_on: string
           player_a: string
           player_b: string
+          rejection_reason: string | null
           retired_by: string | null
           status: string
           submitted_by: string
+          tournament_tie_id: string | null
+          void_reason: string | null
           voided_at: string | null
           voided_by: string | null
           winner: string
@@ -503,6 +856,46 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      submit_tournament_match: {
+        Args: {
+          match_outcome: string
+          match_played_on?: string
+          match_retired_by?: string
+          match_winner: string
+          sets: Json
+          target_tie: string
+        }
+        Returns: {
+          confirmed_at: string | null
+          created_at: string
+          group_id: string
+          id: string
+          outcome: string
+          played_on: string
+          player_a: string
+          player_b: string
+          rejection_reason: string | null
+          retired_by: string | null
+          status: string
+          submitted_by: string
+          tournament_tie_id: string | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          winner: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "matches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      tournament_rounds: { Args: { target: string }; Returns: number }
+      unregister_from_tournament: {
+        Args: { target: string }
+        Returns: undefined
       }
       validate_match_score: {
         Args: {
@@ -516,30 +909,66 @@ export type Database = {
         }
         Returns: undefined
       }
-      void_match: {
-        Args: { target_match: string }
-        Returns: {
-          confirmed_at: string | null
-          created_at: string
-          group_id: string
-          id: string
-          outcome: string
-          played_on: string
-          player_a: string
-          player_b: string
-          retired_by: string | null
-          status: string
-          submitted_by: string
-          voided_at: string | null
-          voided_by: string | null
-          winner: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "matches"
-          isOneToOne: true
-          isSetofReturn: false
-        }
+      void_match:
+        | {
+            Args: { target_match: string }
+            Returns: {
+              confirmed_at: string | null
+              created_at: string
+              group_id: string
+              id: string
+              outcome: string
+              played_on: string
+              player_a: string
+              player_b: string
+              rejection_reason: string | null
+              retired_by: string | null
+              status: string
+              submitted_by: string
+              tournament_tie_id: string | null
+              void_reason: string | null
+              voided_at: string | null
+              voided_by: string | null
+              winner: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "matches"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: { reason: string; target_match: string }
+            Returns: {
+              confirmed_at: string | null
+              created_at: string
+              group_id: string
+              id: string
+              outcome: string
+              played_on: string
+              player_a: string
+              player_b: string
+              rejection_reason: string | null
+              retired_by: string | null
+              status: string
+              submitted_by: string
+              tournament_tie_id: string | null
+              void_reason: string | null
+              voided_at: string | null
+              voided_by: string | null
+              winner: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "matches"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+      withdraw_from_tournament: {
+        Args: { player?: string; target: string }
+        Returns: undefined
       }
       withdraw_match: { Args: { target_match: string }; Returns: undefined }
     }

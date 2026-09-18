@@ -8,6 +8,9 @@
 /** Signed-out pages that an authenticated user should be bounced away from. */
 export const authPages = ["/login", "/signup", "/reset-password"] as const;
 
+/** Bounced for the same reason: the marketing page is for signed-out visitors. */
+const signedOutOnly = new Set<string>([...authPages, "/"]);
+
 /** Pages reachable without a session. */
 const publicPages = new Set<string>([
   "/",
@@ -66,7 +69,7 @@ export function resolveAuthRedirect({
     return loginPathFor(pathname);
   }
 
-  if (isAuthenticated && (authPages as readonly string[]).includes(pathname)) {
+  if (isAuthenticated && signedOutOnly.has(pathname)) {
     return signedInLandingPath;
   }
 

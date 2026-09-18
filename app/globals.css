@@ -1,26 +1,143 @@
 @import "tailwindcss";
 
+/*
+ * Tenny tokens. Brand values are exact vector fills from Branding.pdf; the
+ * rest are derived and noted as such. Contrast pairs are asserted in
+ * __tests__/tokens.test.ts. Direction and rules: docs/design/ui-direction.md.
+ */
 :root {
-  --chalk: #f0eee5;
-  --paper: #f8f6ef;
-  --ink: #102721;
-  --muted: #53645e;
-  --line: #c9cbc0;
-  --clay: #ad4b34;
-  --court: #1b4b3f;
-  --ball: #d8ef56;
-  --font-body: Arial, Helvetica, sans-serif;
+  /* Brand (constant across themes) */
+  --brand-navy: #14304f;
+  --brand-navy-shade: #0b2138;
+  --brand-basil: #5c8a46;
+  --brand-basil-shade: #466f39;
+  --brand-basil-light: #a8c983;
+  --brand-cream: #ede9dc;
+  --brand-paper: #f4f1e8;
+
+  /* Semantic, light */
+  --canvas: var(--brand-paper);
+  --surface: #ffffff;
+  --surface-sunken: var(--brand-cream);
+  --ink: #2a303a;
+  --ink-strong: var(--brand-navy);
+  --muted: #4b5563;
+  --line: #e7e5dd;
+  --line-strong: #7c8189; /* derived: 3:1 control boundary */
+  --action: var(--brand-navy);
+  --on-action: #ffffff;
+  --accent: var(--brand-basil-shade);
+  --positive: var(--brand-basil-shade);
+  --warning: #8a5a00; /* derived */
+  --critical: #b42318; /* derived */
+  --focus: var(--brand-basil);
+  --disabled: #7c8189;
+
+  --shadow-overlay: 0 12px 32px rgb(11 33 56 / 18%);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: var(--brand-navy-shade);
+    --surface: var(--brand-navy);
+    --surface-sunken: var(--brand-navy-shade);
+    --ink: var(--brand-cream);
+    --ink-strong: var(--brand-paper);
+    --muted: #9fb0c4; /* derived */
+    --line: #2a4868; /* derived */
+    --line-strong: #6f87a4; /* derived */
+    --action: var(--brand-basil-light);
+    --on-action: var(--brand-navy-shade);
+    --accent: var(--brand-basil-light);
+    --positive: var(--brand-basil-light);
+    --warning: #fdb022; /* derived */
+    --critical: #f97066; /* derived */
+    --focus: var(--brand-basil-light);
+    --disabled: #6f87a4;
+    --shadow-overlay: 0 12px 32px rgb(0 0 0 / 40%);
+    color-scheme: dark;
+  }
 }
 
 @theme inline {
-  --color-background: var(--chalk);
-  --color-foreground: var(--ink);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-navy-shade: var(--brand-navy-shade);
+  --color-brand-basil: var(--brand-basil);
+  --color-brand-basil-light: var(--brand-basil-light);
+  --color-brand-cream: var(--brand-cream);
+  --color-brand-paper: var(--brand-paper);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-ink: var(--ink);
+  --color-ink-strong: var(--ink-strong);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-action: var(--action);
+  --color-on-action: var(--on-action);
+  --color-accent: var(--accent);
+  --color-positive: var(--positive);
+  --color-warning: var(--warning);
+  --color-critical: var(--critical);
+  --color-focus: var(--focus);
+  --color-disabled: var(--disabled);
+  --font-sans: var(--font-schibsted), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-dm-mono), ui-monospace, monospace;
+  --shadow-overlay: var(--shadow-overlay);
+  --ease-out: var(--ease-out);
+  --container-content: 72rem;
+  --container-prose: 40rem;
 }
 
-* {
-  box-sizing: border-box;
+/* Typography roles */
+@utility type-display {
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+  color: var(--ink-strong);
+}
+@utility type-title {
+  font-size: clamp(1.75rem, 3.5vw, 2.25rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--ink-strong);
+}
+@utility type-section {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--ink-strong);
+}
+@utility type-body {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+@utility type-label {
+  font-family: var(--font-dm-mono), ui-monospace, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+@utility type-score {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+@utility type-meta {
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+@utility type-code {
+  font-family: var(--font-dm-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
 }
 
 html {
@@ -29,155 +146,40 @@ html {
 
 body {
   margin: 0;
-  background: var(--chalk);
+  background: var(--canvas);
   color: var(--ink);
-  font-family: var(--font-geist-sans), var(--font-body);
+  font-family: var(--font-sans);
 }
 
 ::selection {
-  background: var(--ball);
-  color: var(--ink);
+  background: var(--brand-basil-light);
+  color: var(--brand-navy-shade);
 }
 
-.font-display {
-  font-family: Georgia, "Times New Roman", serif;
+/* A modal dialog locks the page behind it. */
+html:has(dialog[open]) {
+  overflow: hidden;
 }
 
-.brand-mark {
-  display: grid;
-  width: 2rem;
-  height: 2rem;
-  place-items: center;
-  border: 1px solid var(--ink);
-  background: var(--ball);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.1rem;
-  font-weight: 700;
-  transition:
-    transform 160ms ease,
-    background-color 160ms ease;
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
-.group:hover .brand-mark {
-  transform: rotate(-5deg);
-  background: #e4f778;
-}
-
-.court-shadow {
-  background:
-    radial-gradient(circle at 30% 30%, rgb(216 239 86 / 24%), transparent 48%),
-    radial-gradient(circle at 70% 80%, rgb(189 86 59 / 18%), transparent 44%);
-  filter: blur(22px);
-}
-
-.scoreboard {
-  position: relative;
-  z-index: 2;
-  margin-left: 6%;
-  padding: clamp(1.5rem, 4vw, 2.5rem);
-  border: 1px solid rgb(255 255 255 / 18%);
-  background: var(--ink);
-  color: white;
-  box-shadow: 0 30px 80px rgb(16 39 33 / 20%);
-}
-
-.scoreboard-label,
-.eyebrow {
-  font-size: 0.7rem;
-  font-weight: 650;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.scoreboard-label {
-  color: rgb(255 255 255 / 55%);
-}
-
-.eyebrow {
-  color: var(--clay);
-}
-
-.verified-mark {
-  border: 1px solid rgb(216 239 86 / 52%);
-  padding: 0.45rem 0.65rem;
-  color: var(--ball);
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.score-row {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1.5rem;
-  padding-bottom: 1.75rem;
-}
-
-.sets {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(2rem, 2.75rem));
-  gap: 0.25rem;
-  text-align: center;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(1.8rem, 5vw, 2.8rem);
-  line-height: 1;
-}
-
-.set-lost {
-  color: rgb(255 255 255 / 38%);
-}
-
-.set-won {
-  color: var(--ball);
-}
-
-.court-lines {
-  position: relative;
-  width: 88%;
-  height: 9rem;
-  margin-top: -2rem;
-  border: 2px solid rgb(248 246 239 / 85%);
-  background: var(--court);
-  box-shadow: 0 24px 60px rgb(16 39 33 / 14%);
-}
-
-.court-net,
-.court-service {
-  position: absolute;
-  display: block;
-  background: rgb(248 246 239 / 85%);
-}
-
-.court-net {
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 2px;
-}
-
-.court-service {
-  top: 50%;
-  width: 50%;
-  height: 2px;
-}
-
-.court-service-left {
-  left: 0;
-}
-
-.court-service-right {
-  right: 0;
-}
-
-@media (max-width: 767px) {
-  .scoreboard {
-    margin-left: 0;
+/*
+ * The Struck mark arrives travelling along its trails, once. Motion is the
+ * brand idea here, not decoration, and it only runs when motion is welcome.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .struck-in {
+    animation: struck-in 700ms var(--ease-out) both;
   }
+}
 
-  .court-lines {
-    width: 94%;
+@keyframes struck-in {
+  from {
+    opacity: 0;
+    transform: translate(-18%, 8%);
   }
 }
 
@@ -191,5 +193,7 @@ body {
   *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }

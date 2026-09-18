@@ -1,231 +1,227 @@
-import { test, expect, type Page } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
-import { randomUUID } from "node:crypto";
+import { expect, test, type Page } from "@playwright/test";
 
-function localAdmin() {
-  if (process.env.TEST_LOCAL_SUPABASE !== "1")
-    throw new Error("Local integration tests require explicit opt-in.");
-  const raw = process.env.TEST_SUPABASE_URL;
-  if (!raw || raw !== process.env.NEXT_PUBLIC_SUPABASE_URL)
-    throw new Error("Test and app database URLs must match.");
-  const url = new URL(raw);
-  if (
-    !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname) ||
-    url.protocol !== "http:" ||
-    !url.port
-  )
-    throw new Error("Refusing to seed a nonlocal database.");
-  const key = process.env.TEST_SUPABASE_SECRET_KEY;
-  if (!key) throw new Error("Missing isolated test admin key.");
-  return createClient(raw, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
-async function login(page: Page, email: string, password: string) {
-  await page.goto("/login");
-  await page.getByLabel("Email", { exact: true }).fill(email);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
-}
-async function fillCompletedScore(
+import { createPlayer, signIn } from "./local-stack";
+
+/**
+ * The verified match lifecycle with two real accounts, through the interface:
+ * create and join a group, submit, edit, confirm, see the rating move, void it
+ * with a reason, reject with a reason, withdraw, edit a profile, sign out.
+ * Carries over every check from the pre-redesign lifecycle test.
+ */
+
+async function logMatch(
   page: Page,
-  playerA: string,
-  playerB: string,
-  gamesB1: string,
-  gamesB2: string,
+  opponent: string,
+  sets: [string, string][],
+  names: [string, string],
 ) {
-  await page.getByLabel(`Set 1 ${playerA} games`, { exact: true }).fill("6");
-  await page
-    .getByLabel(`Set 1 ${playerB} games`, { exact: true })
-    .fill(gamesB1);
-  await page.getByLabel(`Set 2 ${playerA} games`, { exact: true }).fill("6");
-  await page
-    .getByLabel(`Set 2 ${playerB} games`, { exact: true })
-    .fill(gamesB2);
+  await page.goto("/matches/new");
+  await page.getByRole("radio", { name: opponent }).check();
+  await page.getByRole("button", { name: "Continue" }).click(); // opponent
+  await page.getByRole("button", { name: "Continue" }).click(); // date and outcome
+  await fillSets(page, sets, names);
+  await page.getByRole("button", { name: "Continue" }).click(); // score
+}
+
+async function fillSets(
+  page: Page,
+  sets: [string, string][],
+  names: [string, string],
+) {
+  for (const [index, [mine, theirs]] of sets.entries()) {
+    await page.getByLabel(`Set ${index + 1}, ${names[0]} games`).fill(mine);
+    await page.getByLabel(`Set ${index + 1}, ${names[1]} games`).fill(theirs);
+  }
+}
+
+async function answer(
+  page: Page,
+  action: "Confirm score" | "Reject score",
+  reason?: string,
+) {
+  await page.getByRole("button", { name: action }).click();
+  const dialog = page.getByRole("dialog");
+  if (reason)
+    await dialog.getByLabel("What was wrong? (optional)").fill(reason);
+  await dialog.getByRole("button", { name: action }).click();
+  await expect(dialog).toBeHidden();
 }
 
 test("two players complete the verified match lifecycle", async ({
-  page,
   browser,
-  baseURL,
-}, testInfo) => {
-  test.setTimeout(120000);
-  const admin = localAdmin(),
-    tag = randomUUID().slice(0, 8),
-    password = `Tennis-test-${tag}!Aa9`,
-    ids: string[] = [];
-  const groupIds: string[] = [];
-  const users = [
-    { email: `ada-${tag}@example.test`, name: `Ada ${tag}` },
-    { email: `bo-${tag}@example.test`, name: `Bo ${tag}` },
-  ];
-  const otherContext = await browser.newContext({
-    baseURL,
-    viewport: page.viewportSize() ?? undefined,
-    isMobile: testInfo.project.name.includes("mobile"),
-    hasTouch: testInfo.project.name.includes("mobile"),
-  });
-  const other = await otherContext.newPage();
-  try {
-    for (const u of users) {
-      const { data, error } = await admin.auth.admin.createUser({
-        email: u.email,
-        password,
-        email_confirm: true,
-        user_metadata: { display_name: u.name },
-      });
-      if (error) throw error;
-      ids.push(data.user.id);
-    }
-    await login(page, users[0].email, password);
-    await page.reload();
-    await expect(
-      page.getByRole("heading", { name: "Your tennis", exact: true }),
-    ).toBeVisible();
-    await page.goto("/");
-    await expect(page).toHaveURL(/\/dashboard$/);
-    await page.goto("/groups");
-    await page.getByLabel("Group name", { exact: true }).fill(`Ladder ${tag}`);
-    await page
-      .getByRole("button", { name: "Create group", exact: true })
-      .click();
-    await expect(page).toHaveURL(/\/groups\/[\w-]+$/);
-    const groupUrl = page.url(),
-      groupId = groupUrl.split("/").pop()!;
-    groupIds.push(groupId);
-    const { data: group, error: ge } = await admin
-      .from("groups")
-      .select("invite_code")
-      .eq("id", groupId)
-      .single();
-    if (ge) throw ge;
-    await login(other, users[1].email, password);
-    await other.goto("/groups");
-    await other
-      .getByLabel("Invite code", { exact: true })
-      .fill(group.invite_code);
-    await other
-      .getByRole("button", { name: "Join group", exact: true })
-      .click();
-    await expect(other).toHaveURL(groupUrl);
-    await page.goto(`/groups/${groupId}/matches/new`);
-    await fillCompletedScore(page, users[0].name, users[1].name, "5", "0");
-    await page
-      .getByRole("button", { name: "Submit match", exact: true })
-      .click();
-    await expect(
-      page.getByRole("alert").filter({ hasText: "Check the score" }),
-    ).toContainText("Check the score");
-    await expect(
-      page.getByLabel(`Set 1 ${users[0].name} games`, { exact: true }),
-    ).toHaveValue("6");
-    await page
-      .getByLabel(`Set 1 ${users[1].name} games`, { exact: true })
-      .fill("0");
-    await page
-      .getByRole("button", { name: "Submit match", exact: true })
-      .click();
-    await expect(page).toHaveURL(/\/matches\/[0-9a-f-]{36}$/);
-    const matchUrl = page.url();
-    await expect(
-      page.getByRole("button", { name: "Confirm result", exact: true }),
-    ).toHaveCount(0);
-    await page.getByRole("link", { name: "Edit score", exact: true }).click();
-    await page
-      .getByLabel(`Set 2 ${users[1].name} games`, { exact: true })
-      .fill("1");
-    await page
-      .getByRole("button", { name: "Save changes", exact: true })
-      .click();
-    await expect(page).toHaveURL(matchUrl);
-    await expect(
-      page.getByRole("row").filter({
-        has: page.getByRole("rowheader", { name: "2", exact: true }),
-      }),
-    ).toContainText("1");
-    await other.goto(`/groups/${groupId}/standings`);
-    await expect(
-      other.getByRole("row").filter({ hasText: users[0].name }),
-    ).toContainText("1500.0");
-    await other.goto(matchUrl);
-    await other
-      .getByRole("button", { name: "Confirm result", exact: true })
-      .click();
-    await expect(other.getByText("confirmed", { exact: true })).toBeVisible();
-    await other.goto(`/groups/${groupId}/standings`);
-    await expect(
-      other.getByRole("row").filter({ hasText: users[0].name }),
-    ).toContainText("1519.4");
-    await expect(
-      other.getByRole("row").filter({ hasText: users[1].name }),
-    ).toContainText("1480.6");
-    await page.goto(matchUrl);
-    await expect(
-      page.getByRole("link", { name: "Edit score", exact: true }),
-    ).toHaveCount(0);
-    await page
-      .getByRole("button", { name: "Void confirmed match", exact: true })
-      .click();
-    await expect(page.getByText("void", { exact: true })).toBeVisible();
-    await page.goto(`/groups/${groupId}/standings`);
-    await expect(
-      page.getByRole("row").filter({ hasText: users[0].name }),
-    ).toContainText("1500.0");
+}) => {
+  test.setTimeout(180_000);
+  const tag = crypto.randomUUID().slice(0, 6);
+  const [adaPlayer, boPlayer] = await Promise.all([
+    createPlayer(`Ada${tag}`),
+    createPlayer(`Bo${tag}`),
+  ]);
+  const names: [string, string] = [`Ada${tag}`, `Bo${tag}`];
 
-    await page.goto(`/groups/${groupId}/matches/new`);
-    await fillCompletedScore(page, users[0].name, users[1].name, "0", "0");
-    await page
-      .getByRole("button", { name: "Submit match", exact: true })
-      .click();
-    await expect(page).toHaveURL(/\/matches\/[0-9a-f-]{36}$/);
-    const rejectedUrl = page.url();
-    await other.goto(rejectedUrl);
-    await other
-      .getByRole("button", { name: "Reject result", exact: true })
-      .click();
-    await expect(other.getByText("rejected", { exact: true })).toBeVisible();
+  // A signed-in visitor to the landing page goes to their dashboard.
+  const ada = await signIn(browser, adaPlayer);
+  await ada.goto("/");
+  await expect(ada).toHaveURL(/\/dashboard$/);
 
-    await page.goto(`/groups/${groupId}/matches/new`);
-    await fillCompletedScore(page, users[0].name, users[1].name, "2", "2");
-    await page
-      .getByRole("button", { name: "Submit match", exact: true })
-      .click();
-    await expect(page).toHaveURL(/\/matches\/[0-9a-f-]{36}$/);
-    const withdrawnId = page.url().split("/").pop()!;
-    await page
-      .getByRole("button", { name: "Withdraw match", exact: true })
-      .click();
-    await expect(page).toHaveURL(/\/matches$/);
-    const { data: withdrawn, error: withdrawnError } = await admin
-      .from("matches")
-      .select("id")
-      .eq("id", withdrawnId)
-      .maybeSingle();
-    if (withdrawnError) throw withdrawnError;
-    expect(withdrawn).toBeNull();
+  // Ada creates a group from the first-run dashboard; Bo joins with the code.
+  await ada.getByRole("button", { name: "Create group" }).click();
+  await ada.getByLabel("Group name").fill(`Ladder ${tag}`);
+  await ada
+    .getByRole("dialog")
+    .getByRole("button", { name: "Create group" })
+    .click();
+  await expect(
+    ada.getByRole("heading", { level: 1, name: `Ladder ${tag}` }),
+  ).toBeVisible();
+  const groupUrl = ada.url().split("?")[0];
+  const code = (await ada.locator(".type-code").first().textContent())!.trim();
 
-    await page.goto("/profile");
-    await page
-      .getByLabel("Display name", { exact: true })
-      .fill(`Ada updated ${tag}`);
-    await page
-      .getByRole("button", { name: "Save profile", exact: true })
-      .click();
-    await expect(page.getByRole("status")).toContainText("Profile saved");
-    await page.getByRole("button", { name: "Sign out", exact: true }).click();
-    await expect(page).toHaveURL(/\/login$/);
-    await page.goto("/dashboard");
-    await expect(page).toHaveURL(/\/login\?next=/);
-  } finally {
-    await otherContext.close();
-    for (const id of groupIds) {
-      const { error } = await admin.from("groups").delete().eq("id", id);
-      if (error) throw error;
-    }
-    for (const id of ids) {
-      const { error } = await admin.auth.admin.deleteUser(id);
-      if (error) throw error;
-    }
-  }
+  const bo = await signIn(browser, boPlayer);
+  await bo.getByRole("button", { name: "Join group" }).first().click();
+  await bo.getByLabel("Invite code").fill(code);
+  await bo
+    .getByRole("dialog")
+    .getByRole("button", { name: "Join group" })
+    .click();
+  await expect(bo.getByText(`Welcome to Ladder ${tag}.`)).toBeVisible();
+
+  // An illegal score is caught before it is sent, and the entry is kept.
+  await logMatch(
+    ada,
+    names[1],
+    [
+      ["6", "5"],
+      ["6", "0"],
+    ],
+    names,
+  );
+  await expect(
+    ada.getByRole("alert").filter({ hasText: "not a finished set" }),
+  ).toBeVisible();
+  await expect(ada.getByLabel(`Set 1, ${names[0]} games`)).toHaveValue("6");
+  await ada.getByLabel(`Set 1, ${names[1]} games`).fill("0");
+  await ada.getByRole("button", { name: "Continue" }).click();
+  await ada.getByRole("button", { name: "Send for confirmation" }).click();
+  await expect(ada.getByText("Sent for confirmation")).toBeVisible();
+  const matchUrl = ada.url().split("?")[0];
+
+  // The submitter cannot confirm, but can edit while it is pending.
+  await expect(ada.getByRole("button", { name: "Confirm score" })).toHaveCount(
+    0,
+  );
+  await ada.getByRole("link", { name: "Edit score" }).click();
+  await ada.getByRole("button", { name: "Continue" }).click();
+  await ada.getByLabel(`Set 2, ${names[1]} games`).fill("1");
+  await ada.getByRole("button", { name: "Continue" }).click();
+  await expect(
+    ada.getByRole("group", { name: `${names[0]} beat ${names[1]} 6-0 6-1` }),
+  ).toBeVisible();
+  await ada.getByRole("button", { name: "Save changes" }).click();
+  await expect(ada.getByText("Correction sent")).toBeVisible();
+
+  // Nothing is rated until the opponent confirms.
+  await bo.goto(`${groupUrl}?tab=standings`);
+  await expect(
+    bo.getByText("No confirmed matches in this group yet."),
+  ).toBeVisible();
+
+  await bo.goto(matchUrl);
+  await answer(bo, "Confirm score");
+  await expect(
+    bo.getByText("Confirmed", { exact: true }).first(),
+  ).toBeVisible();
+
+  // 6-0 6-1 between two new players: +19.4 and -19.4, shown rounded.
+  await bo.goto(`${groupUrl}?tab=standings`);
+  const table = bo.getByRole("table");
+  await expect(
+    table.getByRole("row", { name: new RegExp(names[0]) }),
+  ).toContainText("1519");
+  await expect(
+    table.getByRole("row", { name: new RegExp(names[1]) }),
+  ).toContainText("1481");
+
+  // Confirmed is final: no edit. The organizer voids it with a reason.
+  await ada.goto(matchUrl);
+  await expect(ada.getByRole("link", { name: "Edit score" })).toHaveCount(0);
+  await ada.getByRole("button", { name: "Void match" }).click();
+  await ada
+    .getByRole("dialog")
+    .getByLabel("Reason")
+    .fill("Practice set, logged by mistake.");
+  await ada
+    .getByRole("dialog")
+    .getByRole("button", { name: "Void match" })
+    .click();
+  await expect(ada.getByText("This match was voided")).toBeVisible();
+  await expect(
+    ada.getByText("Practice set, logged by mistake.").first(),
+  ).toBeVisible();
+  await ada.goto(`${groupUrl}?tab=standings`);
+  await expect(
+    ada.getByText("No confirmed matches in this group yet."),
+  ).toBeVisible();
+
+  // Bo rejects the next submission, and Ada sees why.
+  await logMatch(
+    ada,
+    names[1],
+    [
+      ["6", "0"],
+      ["6", "0"],
+    ],
+    names,
+  );
+  await ada.getByRole("button", { name: "Send for confirmation" }).click();
+  await expect(ada.getByText("Sent for confirmation")).toBeVisible();
+  const rejectedUrl = ada.url().split("?")[0];
+  await bo.goto(rejectedUrl);
+  await answer(bo, "Reject score", "It was 6-2 in the second.");
+  await expect(bo.getByText("Rejected", { exact: true }).first()).toBeVisible();
+  await ada.goto(rejectedUrl);
+  await expect(ada.getByText(`${names[1]} rejected this score`)).toBeVisible();
+  await expect(
+    ada.getByText("It was 6-2 in the second.").first(),
+  ).toBeVisible();
+
+  // Ada withdraws a pending submission; it is gone.
+  await logMatch(
+    ada,
+    names[1],
+    [
+      ["6", "2"],
+      ["6", "2"],
+    ],
+    names,
+  );
+  await ada.getByRole("button", { name: "Send for confirmation" }).click();
+  await expect(ada.getByText("Sent for confirmation")).toBeVisible();
+  const withdrawnUrl = ada.url().split("?")[0];
+  await ada.getByRole("button", { name: "Withdraw" }).click();
+  await ada
+    .getByRole("dialog")
+    .getByRole("button", { name: "Withdraw match" })
+    .click();
+  await expect(ada.getByText("The match was withdrawn.")).toBeVisible();
+  await ada.goto(withdrawnUrl);
+  await expect(
+    ada.getByRole("heading", { name: "Nothing here" }),
+  ).toBeVisible();
+
+  // Profile: a new display name is saved and shown.
+  await ada.goto("/settings");
+  await ada.getByLabel("Display name").fill(`Ada updated ${tag}`);
+  await ada.getByRole("button", { name: "Save name" }).click();
+  await expect(ada.getByText("Display name saved.")).toBeVisible();
+  await ada.goto("/profile");
+  await expect(
+    ada.getByRole("heading", { level: 1, name: `Ada updated ${tag}` }),
+  ).toBeVisible();
+
+  // Signing out ends the session.
+  await ada.goto("/settings");
+  await ada.getByRole("button", { name: "Sign out" }).click();
+  await expect(ada).toHaveURL(/\/login$/);
+  await ada.goto("/dashboard");
+  await expect(ada).toHaveURL(/\/login\?next=/);
 });

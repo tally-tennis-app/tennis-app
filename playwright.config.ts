@@ -2,6 +2,9 @@ import { defineConfig, devices } from "@playwright/test";
 const port = process.env.E2E_PORT ?? "3100";
 const baseURL = `http://127.0.0.1:${port}`;
 const integration = process.env.TEST_LOCAL_SUPABASE === "1";
+// Journeys that create accounts and data. They need the local stack, so they
+// run only in the integration projects that scripts/test-local-e2e.py enables.
+const dataJourneys = /(matches|tournament|accessibility-signed-in)\.spec\.ts/;
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
@@ -14,24 +17,24 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      testIgnore: "matches.spec.ts",
+      testIgnore: dataJourneys,
       use: { ...devices["Desktop Chrome"] },
     },
     {
       name: "mobile-chromium",
-      testIgnore: "matches.spec.ts",
+      testIgnore: dataJourneys,
       use: { ...devices["Pixel 7"] },
     },
     ...(integration
       ? [
           {
             name: "integration-chromium",
-            testMatch: "matches.spec.ts",
+            testMatch: dataJourneys,
             use: { ...devices["Desktop Chrome"] },
           },
           {
             name: "integration-mobile",
-            testMatch: "matches.spec.ts",
+            testMatch: dataJourneys,
             use: { ...devices["Pixel 7"] },
           },
         ]

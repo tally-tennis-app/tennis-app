@@ -14,7 +14,7 @@ test("loads the foundation without browser errors and exposes its manifest", asy
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: "Your court. Your crew. Every score counts.",
+      name: "Scores both players agree on.",
     }),
   ).toBeVisible();
 
@@ -26,7 +26,7 @@ test("loads the foundation without browser errors and exposes its manifest", asy
   const manifestResponse = await page.request.get(manifestPath!);
   expect(manifestResponse.ok()).toBe(true);
   await expect(manifestResponse.json()).resolves.toMatchObject({
-    name: "Tennis App",
+    name: "Tenny",
     start_url: "/",
     display: "standalone",
   });

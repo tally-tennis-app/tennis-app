@@ -6,12 +6,12 @@ describe("web app manifest", () => {
     const manifest = manifestModule.default();
 
     expect(manifest).toMatchObject({
-      name: "Tennis App",
-      short_name: "Tennis",
+      name: "Tenny",
+      short_name: "Tenny",
       start_url: "/",
       display: "standalone",
-      background_color: "#f0eee5",
-      theme_color: "#102721",
+      background_color: "#f4f1e8",
+      theme_color: "#14304f",
     });
     expect(manifest.icons).toEqual(
       expect.arrayContaining([

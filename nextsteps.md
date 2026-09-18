@@ -1,394 +1,734 @@
-# Next steps
+# Next steps: complete the Tenny frontend
 
-A roadmap from the current foundation to a working pilot. Last revised 2026-09-14 on
-`feature/pilot-nextsteps` from `main` at `0e5bebe`. Milestones A and B were already
-complete. Matches, ratings, and the functional application shell are implemented on this
-branch. Final visual design remains deliberately deferred.
+This roadmap replaces the earlier feature-level sequence with a frontend delivery plan.
+It was revised on 2026-09-18 against `main` at `69cc930` after the Tenny "Struck"
+brand direction was delivered in [`Branding.pdf`](Branding.pdf).
 
-Read this alongside [`docs/product-questions.md`](docs/product-questions.md), which
-records the resolved product decisions,
-[`docs/decisions/0001-online-first-pwa.md`](docs/decisions/0001-online-first-pwa.md),
-which fixes the delivery model as an online-first PWA, and
-[`docs/decisions/0002-match-immutability-and-derived-ratings.md`](docs/decisions/0002-match-immutability-and-derived-ratings.md),
-which fixes match immutability and derived ratings.
+The objective is a cohesive, production-ready application rather than a collection of
+individually styled pages. The work covers the public site, authentication, the
+authenticated shell, dashboard, profile, groups, matches, standings and ratings, and a
+tournament experience. Each segment should land as a focused pull request or small set
+of pull requests with its own responsive, accessibility, and test acceptance criteria.
 
----
+Read this alongside:
 
-## 1. Where the repository actually is
-
-### What exists and works
-
-| Area       | State                                                                                                                      |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Framework  | Next.js 16.3.4, React 19.3.0, App Router, Tailwind v4, TypeScript 6.0 strict                                               |
-| Routes     | Signed-out welcome/auth routes plus dashboard, groups, match history/detail/edit, global and group standings, and profile  |
-| Matches    | Atomic submit/edit/withdraw/confirm/reject/void RPC lifecycle with legal best-of-three scores and 14-day pending expiry    |
-| Ratings    | Derived 1500/K32 Elo ordered by confirmation, rating history, MOV fixtures, retirement/walkover/void semantics             |
-| Security   | RLS, explicit RPC/table grants, security-invoker standings view, serialized membership and confirmation mutations          |
-| Tests      | 63 application tests, 198 pgTAP assertions, four overlapping-transaction checks, and desktop/mobile browser coverage       |
-| Operations | Structured sanitized errors, isolated recovery drill, two migrated cloud environments, runbooks, CI, and type drift checks |
-
-### Remaining launch prerequisites
-
-- Enable the prepared GitHub Actions deployment jobs and complete authenticated preview
-  and production smoke tests with two real pilot accounts.
-- Complete the final frontend design pass and installed-PWA checks on physical iOS and
-  Android devices.
-
-### Known defects and gaps in what does exist
-
-| #   | Issue                                                                                                                                                                                                                                                                                    | Status                                                                                                                                          |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | CI ran `typecheck` before `build`, so `.next/types` did not exist and the global `LayoutProps` helper was undefined. Every pull request failed the `quality` check.                                                                                                                      | **Fixed.** Merged to `main` as pull request #4                                                                                                  |
-| 2   | Three Dependabot pull requests (#1, #2, #3) were open and red, blocked by defect 1.                                                                                                                                                                                                      | **Resolved.** #1 and #2 auto-closed; #3 superseded by the regrouping in #12                                                                     |
-| 6   | Dependabot bundled `@types/node`, `eslint`, and `typescript` in one development-dependency group, so a TypeScript bump no tool could accept held every unrelated update hostage.                                                                                                         | **Fixed** in pull request #12. TypeScript now arrives alone; `@types/node` majors are pinned to the runtime                                     |
-| 3   | `createSupabaseServerClient()` silently swallows cookie writes ([`src/lib/supabase/server.ts:20-26`](src/lib/supabase/server.ts#L20-L26)). Without a proxy that refreshes sessions, logins expire silently.                                                                              | **Fixed.** `proxy.ts` merged to `main` as pull request #6                                                                                       |
-| 4   | E2E coverage was Chromium desktop only, on a product whose primary surface is an installed mobile PWA.                                                                                                                                                                                   | **Fixed on this branch.** Desktop and mobile projects cover auth routing and the real match loop. Physical-device installation remains pending. |
-| 7   | A removed member could rejoin with the invite code they already knew, silently undoing the removal. Found by clicking through the app, not by any test.                                                                                                                                  | **Fixed** in pull request #8 (`removed_by`)                                                                                                     |
-| 5   | No `.github/workflows` job runs against a real Supabase instance, so RLS policies will have no CI enforcement by default.                                                                                                                                                                | **Fixed.** The `database` job in `ci.yml` merged as pull request #6. Milestone B adds its policy tests to `supabase/tests/`, not the job        |
-| 8   | `eslint-config-next` vendors dependency constraints that cap ESLint and TypeScript majors.                                                                                                                                                                                               | ESLint 10 remains intentionally held. PR #19 proposes supported TypeScript 6 and has green CI, but repository rules require one approval.       |
-| 9   | This working copy lives under `~/Desktop`, which iCloud Drive syncs. iCloud resolves conflicts by writing `name 2.ext` duplicates, and duplicates landing in `.next/types/` break `typecheck` locally with `Duplicate identifier 'LayoutProps'`. CI is unaffected — it checks out clean. | **Open, local only.** `rm -rf .next` clears it; moving the repo off the synced path fixes it                                                    |
+- [`Branding.pdf`](Branding.pdf), the visual source of truth for the Tenny name, Struck
+  ball mark, lockups, icon treatments, and logo usage rules.
+- [`docs/product-questions.md`](docs/product-questions.md), which fixes the current
+  scoring, confirmation, rankings, group, and authentication behavior.
+- [`docs/decisions/0001-online-first-pwa.md`](docs/decisions/0001-online-first-pwa.md),
+  which keeps the product an online-first responsive PWA.
+- [`docs/decisions/0002-match-immutability-and-derived-ratings.md`](docs/decisions/0002-match-immutability-and-derived-ratings.md),
+  which makes confirmed matches immutable and ratings derived.
 
 ---
 
-## 2. Decisions — resolved
+## 1. Current state
 
-Nothing blocks implementation any more. The product decisions are recorded in
-[`docs/product-questions.md`](docs/product-questions.md); the reasoning behind the two
-that shape the schema is in
-[ADR 0002](docs/decisions/0002-match-immutability-and-derived-ratings.md).
+> This section records the starting point on 2026-09-18. It was written against a local
+> `main` that predated pull request #20, which had already landed the match lifecycle,
+> derived ratings, a functional shell, separate cloud environments, error reporting,
+> and recovery runbooks. For what has since shipped, see the progress table in §15.
 
-The three that were blocking, and what they landed on:
+### Already working
 
-| Was                             | Resolution                                                                                                                                                          |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1 — match score representation | Best-of-three full sets, tiebreak at 6-6 in every set. Outcomes `completed` / `retired` / `walkover`. Date played, not timestamp.                                   |
-| D2 — rating replay semantics    | **A confirmed match is immutable**, so no replay exists. Ratings are a derived fold ordered by `confirmed_at`. Start 1500, `K = 32`, margin via bounded game share. |
-| D3 — group membership rules     | Reusable invite code with a 30-day expiry, organizer-rotated. Departed members stay in standings as inactive. Multiple groups per user. Account deletion cascades.  |
+| Area           | State                                                                                                               |
+| -------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Framework      | Next.js 16.3.4, React 19.3.0, App Router, Tailwind v4, strict TypeScript                                            |
+| Authentication | Email/password signup, confirmation, sign-in, reset, sign-out, session refresh, protected routes                    |
+| Groups         | Create, join, roster, roles, removal/restore, organizer transfer, invite rotation, RLS and policy tests             |
+| PWA            | Standalone manifest and 192/512 maskable icons                                                                      |
+| Quality        | Formatting, lint, typecheck, unit, build, E2E, database migrations, and pgTAP policy tests in CI                    |
+| Brand          | Tenny Struck ball direction, horizontal and stacked lockups, app icon, favicon treatment, navy/basil/white variants |
 
-Account deletion still deliberately cascades match records. The earlier shared-database
-exception is retired for the pilot: preview and production require separate projects.
+### Frontend gaps
 
-### The one detail that is easy to get wrong
+- The current public page and placeholder `T` mark predate the Tenny brand.
+- `/dashboard` is a signed-in placeholder rather than a useful home screen.
+- Auth and group pages are functional but do not share a finished visual system or app
+  shell.
+- There is no profile screen, matches UI, match score card system, standings UI, ratings
+  history, or tournament UI.
+- Loading, empty, failure, permission, offline, and destructive-action states are not
+  implemented consistently.
+- Mobile Chromium is not yet a first-class Playwright target even though the installed
+  PWA is the primary product surface.
 
-The rating fold orders by **`confirmed_at`, not `played_on`**. Ordering by the date the
-match was played would let a backdated entry rewrite every rating after it, which is the
-exact problem immutability was chosen to eliminate. This is a silent correctness bug, not
-a preference, and Milestone E carries a dedicated regression test for it.
+### Non-frontend dependencies
 
-### Deferred, deliberately
+The interface must not conceal missing product behavior behind static mock data.
 
-Naming and trademark clearance, doubles, offline submission, push notifications,
-generated avatars, tournaments, and social login. All already deferred in
-`docs/product-questions.md` and the ADRs. Do not let them expand the pilot.
+- Matches, match sets, confirmation, standings, and rating queries still need their
+  database migrations, RLS policies, RPCs, and server-side query layer.
+- Tournament rules and data do not yet have an accepted product decision. The existing
+  product document explicitly defers round-robin and pool-play tournaments.
+- Profile editing needs a safe server action and any additional profile fields must be
+  agreed before the schema expands.
 
----
-
-## 3. Milestone 0 — Unblock the pipeline
-
-**Goal:** a green `main` and an empty pull request queue.
-
-**Current:** `main` is green. Pull request #19 merged its isolated TypeScript 6 update.
-Pull request #20 contains the pilot work and has green quality and database checks; the
-repository requires Mateo's approval before merge.
-
-1. ~~Merge `fix/ci-bootstrap`.~~ Landed as pull request #4. `typecheck` now runs
-   `next typegen && tsc --noEmit`, the pattern Next 16 documents for type-checking route
-   types in CI without a full build.
-2. ~~Merge or close Dependabot #1 and #2.~~ Both auto-closed once the `actions/checkout`
-   and `actions/setup-node` v7 bumps landed, exactly as expected.
-3. ~~Decide what to do about the grouped development-dependency bump.~~ Resolved by
-   pull request #12, which took the split: TypeScript is excluded from the
-   `development-dependencies` group and arrives as its own pull request, and
-   `@types/node` majors are ignored so they track the Node runtime in `.nvmrc` rather
-   than the newest Node release. Pull requests #3 and #11 were closed as superseded.
-
-### The standing caveat: the `eslint-config-next` ceiling
-
-Two development dependencies cannot be upgraded, and neither is our code's fault.
-`eslint-config-next@16.3.4` vendors its own copies of `typescript-eslint` and
-`eslint-plugin-react`, so their compatibility is what actually binds:
-
-| Dependency   | Held at | Why                                                                                                                                                                                | Clears when                                                               |
-| ------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `eslint`     | 9.x     | ESLint 10 removed `context.getFilename()`, which `eslint-plugin-react` still calls. Every rule in that plugin throws on load, so `npm run lint` exits 2 before linting anything.   | `eslint-config-next` ships a release with a patched `eslint-plugin-react` |
-| `typescript` | 6.x     | TypeScript 6 is supported; TypeScript 7 remains outside the current parser range ([typescript-eslint#10940](https://github.com/typescript-eslint/typescript-eslint/issues/10940)). | `typescript-eslint` ships TS >= 7.1 support                               |
-
-ESLint 10 is held at the incompatible major. Pull request #19 isolated and merged the
-supported TypeScript 6 update.
-
-**Done when:** the pilot branch has green CI and the required approval.
+Frontend work may begin with typed fixtures for isolated component tests, but a segment
+is not complete until its real route uses authorized application data and handles the
+full state model.
 
 ---
 
-## 4. Milestone A — Authentication
+## 2. Product and experience principles
 
-**Status: done.** Merged to `main` as pull request #6.
+These constraints apply to every segment.
 
-**Goal:** a real person can sign in, and the app knows who they are.
+1. **Tenny is the product name.** Remove the temporary "Tennis App" and
+   "Tally / Tennis" presentation from user-facing UI as the relevant surfaces are
+   rebuilt. Keep the legal repository/package name unchanged unless a separate rename
+   is approved.
+2. **The Struck ball is the primary mark.** Use the supplied geometry and variants;
+   never redraw the seam, trails, proportions, or small-size treatment in CSS.
+3. **Mobile-first, desktop-complete.** The installed phone PWA is the primary layout.
+   Desktop should use its space deliberately, not stretch the mobile column.
+4. **Scores are the visual hero.** Names, set scores, match state, and required action
+   must scan in that order. Decorative styling must never compete with the score.
+5. **Status is never color-only.** Pending, confirmed, rejected, expired, retired,
+   walkover, and voided states need text or icon-and-text labels.
+6. **One clear primary action per view.** Submission, confirmation, invitation, and
+   tournament management screens must make the next action obvious.
+7. **Server truth over optimistic fiction.** A completed action shows pending feedback,
+   then reconciles with the server response. Do not show a confirmed match, new rating,
+   or changed bracket before the server has accepted it.
+8. **Accessible by default.** Target WCAG 2.2 AA, visible keyboard focus, semantic
+   landmarks, labelled controls, 44px touch targets, screen-reader announcements for
+   async results, reduced-motion support, and sufficient contrast in every logo/color
+   variant.
+9. **Online-first stays explicit.** Every authenticated screen requires the network.
+   Show a useful offline state; do not add cached private records, queued mutations, or
+   background sync without a new decision record.
+10. **No dead controls or fake data.** Hide or label intentionally unavailable actions.
+    Sample content belongs only in tests and development fixtures.
 
-Use Supabase Auth with email and password, email confirmation on signup, and a display
-name captured at signup. No NextAuth, no custom session table.
+---
 
-Magic links were rejected deliberately: a link tapped in a mail client opens the default
-browser rather than the installed PWA, so the user ends up signed in in a browser tab
-while the app icon on their home screen is still signed out.
+## 3. Target information architecture
+
+### Public and account routes
+
+| Route              | Purpose                                                                                        |
+| ------------------ | ---------------------------------------------------------------------------------------------- |
+| `/`                | Tenny marketing landing page for signed-out visitors; redirect signed-in users to `/dashboard` |
+| `/login`           | Sign in                                                                                        |
+| `/signup`          | Create an account                                                                              |
+| `/reset-password`  | Request a reset link                                                                           |
+| `/update-password` | Choose a new password after recovery                                                           |
+| `/auth/callback`   | Confirmation/recovery callback with a branded processing and failure experience                |
+
+### Authenticated routes
+
+| Route                      | Purpose                                                                                                                                    |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/dashboard`               | Personalized overview, required actions, rating snapshot, recent results, and group/tournament activity                                    |
+| `/matches`                 | All visible matches with pending-action, status, group, and player filters                                                                 |
+| `/matches/new`             | Guided score submission flow                                                                                                               |
+| `/matches/[id]`            | Match detail, verification history, score, rating change, and allowed actions                                                              |
+| `/standings`               | Global ratings plus a group selector and explanatory rating context                                                                        |
+| `/groups`                  | Group switcher, group summaries, create, and join flows                                                                                    |
+| `/groups/[id]`             | Group overview with standings, recent matches, roster, and invite affordance                                                               |
+| `/groups/[id]/settings`    | Organizer controls, invite management, roles, removal/restore, transfer, and leave flow                                                    |
+| `/tournaments`             | Tournament discovery, active/completed sections, and organizer creation entry point                                                        |
+| `/tournaments/new`         | Tournament creation flow after the tournament product contract is approved                                                                 |
+| `/tournaments/[id]`        | Overview, entrants, draw/rounds, schedule, results, and tournament status                                                                  |
+| `/tournaments/[id]/manage` | Organizer-only seeding, draw, scheduling, result, withdrawal, and status controls                                                          |
+| `/profile`                 | Personal identity, rating/record summary, group memberships, and match history                                                             |
+| `/settings`                | Account details, password/security entry points, appearance/accessibility preferences if added, sign-out, and account deletion information |
+
+On compact screens, use a persistent bottom navigation for Dashboard, Matches, Groups,
+and Tournaments, with profile/account access in the app header. On wider screens, move
+the same destinations into a left rail. Standings remains reachable from the dashboard,
+group views, and the navigation overflow so the primary navigation does not exceed five
+items.
+
+---
+
+## 4. Segment 0 - lock the UI contract
+
+**Goal:** remove ambiguity before components multiply.
 
 ### Work
 
-- **`proxy.ts` at the repository root.** In Next.js 16 the `middleware` file convention is
-  deprecated and renamed to `proxy`, the export is `proxy` rather than `middleware`, and
-  the Edge runtime is not supported there. Most Supabase guides still show
-  `middleware.ts`; do not copy them verbatim. This file refreshes the Supabase session on
-  every request and writes back the refreshed cookies, which is what makes defect 3
-  disappear.
-- **Routes:** `/signup`, `/login`, `/reset-password`, `/auth/callback` (email
-  confirmation), and a sign-out action.
-- **`profiles` table:** `id` referencing `auth.users`, `display_name`, `created_at`, with a
-  trigger inserting a row on user creation.
-- **RLS on `profiles`:** a user reads and updates only their own row.
-- **Route protection:** an authenticated area that redirects anonymous visitors to
-  `/login`.
+- Inventory the supplied logo files and request/export production-ready SVG and PNG
+  assets for the full-color mark, one-color mark, reversed mark, horizontal lockup,
+  stacked lockup, app icon, and favicon.
+- Record exact brand color values and approved typefaces from the brand source. Do not
+  sample approximate hex values from a screenshot when source values are available.
+- Decide whether the current serif editorial type remains part of the product or is
+  replaced by the brand type system.
+- Define the app's density, corner, border, elevation, icon, motion, and illustration
+  rules in one short UI direction note inside this document or a dedicated design spec.
+- Confirm the route inventory above and the compact/wide navigation model.
+- Confirm whether the first tournament release is single-elimination singles. This is
+  the recommended v1 because round-robin and pool play are already explicitly deferred.
+- Define the minimum tournament contract: eligibility, entrant cap, seeding, byes,
+  organizer powers, scheduling, score verification, withdrawals, cancellations, and
+  when tournament results enter normal ratings.
 
-### Tooling decision to make here
+### Done when
 
-Adopt the Supabase CLI and commit migrations as plain SQL under `supabase/migrations/`.
-Do not add Prisma or Drizzle. The pilot schema is roughly five tables, and RLS policies
-have to be written in SQL regardless, so an ORM adds a build step and hides the policies
-that are the actual security boundary.
-
-Add `supabase/config.toml`, a `db:reset` script, and generated database types checked into
-the repository so `typecheck` catches schema drift.
-
-### Acceptance criteria
-
-- A new account signs up, confirms by email, and signs in.
-- A session survives a page reload and a browser restart.
-- Signing out clears the session and protected routes redirect to `/login`.
-- An unauthenticated request to a protected route never renders authenticated content.
-- Policy tests prove one user cannot read another user's profile row.
+- The brand has exact assets and tokens rather than visual approximations.
+- Every route has an owner, purpose, primary action, and required data source.
+- Tournament implementation has an accepted product decision and acceptance criteria.
+- No unresolved UI decision can force a global redesign after Segment 1.
 
 ---
 
-## 5. Milestone B — Groups
+## 5. Segment 1 - brand foundation and design system
 
-**Done**, pull requests #7 and #8.
+**Goal:** create the reusable visual language that every later screen consumes.
 
-**Goal:** the invite-only group that the pilot depends on.
+### Foundation
 
-This milestone is the security spine of the product. Every later table inherits the
-"can this user see this group" predicate established here, so the policies deserve more
-care than the UI.
+- Replace the current ad hoc color variables with semantic tokens for canvas, surface,
+  raised surface, text, muted text, border, brand navy, brand basil, accent, positive,
+  warning, critical, focus, and disabled states.
+- Establish typography roles for display, page title, section title, body, label,
+  numeric score, metadata, and monospaced invite codes.
+- Define consistent spacing, radii, borders, shadows, focus rings, content widths, and
+  responsive breakpoints.
+- Add the approved Struck mark and Tenny lockups as reusable image components with
+  correct variants, intrinsic dimensions, alternative text rules, and small-size use.
+- Update metadata, manifest name, theme colors, app icons, favicon, and browser/PWA
+  presentation to Tenny.
 
-### What Milestone C inherits
+### Shared UI primitives
 
-- `public.is_group_member(uuid)` and `public.is_group_organizer(uuid)` are the single
-  definition of membership. Reuse them in the `matches` policies rather than writing a
-  fresh subquery — they are `SECURITY DEFINER` precisely so a policy on a table can ask
-  about membership without recursing.
-- Membership mutations live in `SECURITY DEFINER` functions, not `UPDATE` policies.
-  `group_members` has a `SELECT` policy and nothing else, so a crafted direct write has
-  no path. Match confirmation has the same shape of rule ("only a participant, and never
-  your own submission") and should follow the same pattern.
-- A departed member keeps their row with `left_at` set, and `removed_by` distinguishes
-  removal from leaving. Standings must include departed members' past results.
+- Buttons: primary, secondary, quiet, critical, icon, loading, and disabled.
+- Form controls: text, email, password, date, select/combobox, score input, checkbox,
+  radio, segmented choice, field hint, and field error.
+- Structure: page header, section header, card, inset panel, divider, responsive stack,
+  data table/list, tabs, and stat tile.
+- Feedback: inline alert, banner, toast, skeleton, spinner, progress indicator, empty
+  state, error state, and offline state.
+- Overlays: menu, dialog, confirmation dialog, and mobile bottom sheet. Focus trapping,
+  escape behavior, scroll locking, and focus restoration are required.
+- Identity and status: initials avatar fallback, role badge, match status badge, rating
+  delta, group badge, and tournament status badge.
 
-### Schema
+### Domain primitives
 
-- `groups` — `id`, `name`, `invite_code` (unique), `invite_expires_at`, `created_by`,
-  `created_at`.
-- `group_members` — `group_id`, `user_id`, `role` (`organizer` | `player`), `joined_at`,
-  `left_at` (null means active), primary key on (`group_id`, `user_id`).
+- `Scoreline`: player names and up to three set scores, including tiebreak notation.
+- `MatchCard`: compact and expanded variants using the same score model.
+- `PlayerSummary`: identity, rating, record, and recent form.
+- `StandingRow`: rank, movement, player, rating, record, and inactive state.
+- `GroupCard`: role, member count, recent activity, and next action.
+- `TournamentCard`: format, field size, current round/status, dates, and viewer role.
+- `BracketMatch`: round slot, participants, score/status, winner, and pending action.
+
+### Done when
+
+- A single internal showcase route or component test suite renders every variant and
+  interaction state without introducing a production navigation destination.
+- Tokens and primitives work at 320px, 768px, and wide desktop layouts.
+- Keyboard, screen-reader, reduced-motion, contrast, and 200% zoom checks pass.
+- Later segments do not need one-off button, card, badge, dialog, or form styles.
+
+---
+
+## 6. Segment 2 - public site, auth, and system pages
+
+**Goal:** make the first-run experience unmistakably Tenny and visually connected to
+the signed-in product.
+
+### Public landing page
+
+- Rebuild the landing page around the Tenny wordmark and Struck motion concept.
+- Keep the value proposition concrete: verified scores, fair standings, and a clearer
+  next match.
+- Show a realistic match score card using the production component, not a separate
+  marketing-only imitation.
+- Add clear sign-in and create-account actions, a short three-step verification story,
+  group/standings context, and an installable-PWA explanation.
+- Redirect authenticated visitors from `/` to `/dashboard`.
+
+### Account experience
+
+- Apply the brand shell to sign in, signup, password reset, password update, callback,
+  and confirmation states.
+- Preserve the current privacy behavior for invalid credentials and password reset.
+- Add password visibility controls, clear pending states, autofill-safe labels, and
+  actionable success/error copy.
+- Make callback processing, expired links, and recovery failures understandable rather
+  than exposing a blank or generic system page.
+
+### System pages
+
+- Brand `not-found`, unexpected error, route loading, and offline experiences.
+- Provide safe recovery actions: retry, return to dashboard, or sign in as appropriate.
+
+### Done when
+
+- A new user can move from landing page to confirmed account to dashboard without an
+  unbranded or ambiguous screen.
+- Auth forms remain fully keyboard and password-manager usable.
+- Desktop and mobile Playwright flows cover sign in, signup validation, reset request,
+  sign out, unauthenticated redirects, and common callback failures.
+
+---
+
+## 7. Segment 3 - authenticated application shell
+
+**Goal:** establish the navigation and layout all signed-in routes share.
 
 ### Work
 
-- Create a group; the creator becomes organizer.
-- Join by invite code. The code is reusable with a 30-day expiry; the organizer
-  regenerates it to revoke or extend. Expiry blocks new joins only.
-- Group member list, organizer-only removal, organizer transfer. A group always has at
-  least one organizer; the last one cannot leave without transferring.
-- A removed member keeps a `left_at` stamp, stays in standings as inactive, and drops off
-  the active roster. Their matches are untouched — the alternative silently rewrites
-  every remaining member's rating.
-- RLS: a user reads `groups` and `group_members` rows only for groups they belong to;
-  only organizers mutate membership.
+- Add a protected route group with one responsive shell.
+- Implement the compact bottom navigation, wide left rail, top app header, current-route
+  state, profile menu, group context/switcher, and sign-out entry point.
+- Use the full Tenny lockup where space allows and the approved mark at compact sizes.
+- Add shared page width, gutters, safe-area padding, sticky navigation behavior, and
+  scroll restoration.
+- Give every route a consistent title region, optional context/breadcrumb, primary
+  action area, and document title.
+- Add route-level loading skeletons that match final geometry and avoid layout shifts.
+- Keep authorization in the data layer; hiding a navigation item is not a security
+  boundary.
 
-### CI requirement
+### Done when
 
-Resolve defect 5 here. Add a job that starts a local Supabase instance, applies
-migrations, and runs policy tests as an unprivileged user. Without it, `CONTRIBUTING.md`'s
-"policy tests in the same pull request" rule is unenforceable and will quietly lapse.
-
-### Acceptance criteria
-
-- Two accounts in different groups cannot see each other's group or membership rows,
-  proven by a test that authenticates as each and asserts empty results.
-- An invalid, expired, or rotated invite code fails to join.
-- A non-organizer cannot remove a member, including by calling the API directly.
+- Every existing authenticated route renders inside the shell.
+- Navigation works with keyboard, pointer, touch, screen reader, deep links, refresh,
+  and installed standalone mode.
+- The current route and selected group are always clear without relying on color alone.
+- Shell layout has no horizontal overflow at 320px and no excessively stretched content
+  on wide desktop displays.
 
 ---
 
-## 6. Milestone C — Matches
+## 8. Segment 4 - groups and member management
 
-**Status: implemented and database-reviewed on this branch.**
+**Goal:** bring the already-working group behavior into the finished app experience.
 
-**Goal:** the loop the landing page promises — log a score, opponent confirms it.
+### Group index
 
-Two pull requests: schema plus submission, then confirmation plus standings.
+- Replace the stacked utility forms with group cards and clear Create group / Join group
+  actions.
+- Move creation and invite-code entry into focused dialogs or mobile sheets.
+- Cover first group, invalid/expired invite, restored membership, and multiple-group
+  states.
 
-### Schema
+### Group detail
 
-Singles only for the pilot. Two player columns rather than a participants table; add the
-participants table when doubles ships, not before.
+- Add an overview header with group role, member count, invite action, and relevant
+  organizer controls.
+- Organize content into Overview, Standings, Matches, and Members tabs or equivalent
+  small-screen sections with shareable URLs where state matters.
+- Show a standings preview, recent match cards, active roster, and empty-state prompts.
+- Preserve departed members in historical standings while distinguishing them from the
+  active roster.
 
-- `matches` — `id`, `group_id`, `player_a`, `player_b`, `played_on` (date),
-  `outcome` (`completed` | `retired` | `walkover`), `retired_by`, `winner`,
-  `status` (`pending` | `confirmed` | `rejected`), `submitted_by`, `confirmed_at`,
-  `voided_at`, `voided_by`, `created_at`. CHECK `player_a <> player_b` and
-  `submitted_by IN (player_a, player_b)`.
-- `match_sets` — `match_id`, `set_number`, `games_a`, `games_b`, `tiebreak_a`,
-  `tiebreak_b`, `complete`.
+### Group settings
 
-Per-row CHECKs cover sanity and single-set legality. Composite legality — two or three
-sets, winner has two, a retirement may end mid-set — spans rows, so it lives in a
-`submit_match()` SQL function that inserts the match and its sets atomically. The client
-calls that RPC and cannot construct an illegal match by writing to the tables directly.
+- Separate routine actions from destructive/member-management actions.
+- Show invite code, expiration, copy/share feedback, and rotation confirmation.
+- Add clear promote, demote, remove, restore, transfer-organizer, and leave flows.
+- Explain irreversible consequences before submission and surface database errors in
+  player language.
 
-Prefer normalized `match_sets` over a JSON blob. Standings need to aggregate games won,
-and margin-of-victory Elo needs per-set detail; every such query is harder through JSON,
-and set score validity can be enforced with a CHECK constraint rather than application
-code.
+### Done when
 
-### Work
-
-- Submit a match against another group member.
-- The submitter may edit or withdraw their own submission while it is pending.
-- The opponent confirms or rejects; only confirmed matches count.
-- A pending match older than 14 days displays as expired. This is computed from
-  `created_at` — no cron job.
-- An organizer may void a confirmed match. The score is never rewritten.
-- Match history for a group and for a player.
-- Group standings as a SQL view over confirmed matches. A view, not a maintained table —
-  there is no volume argument for caching during a pilot.
-- RLS: only group members read a group's matches; only a participant confirms, and never
-  their own submission. Updates to a confirmed match are refused by policy, not only by
-  the UI.
-
-### Acceptance criteria
-
-- A player cannot confirm a match they submitted.
-- A pending match does not appear in standings.
-- An invalid set score is rejected by the database, not only by the form.
-- Playwright covers submit, confirm, and standings movement on a mobile viewport
-  (defect 4).
+- Existing group capability remains intact with no direct raw database errors.
+- A player and an organizer each see only valid actions for their role.
+- Mobile and desktop E2E coverage exercises create, join, switch, invite rotation,
+  member role change, remove/restore, transfer, and leave guardrails.
 
 ---
 
-## 7. Milestone D — The real application shell
+## 9. Segment 5 - matches and the score-card system
 
-**Status: functionally implemented. Final visual design and physical-device checks are pending.**
+**Goal:** ship the primary product loop: submit, verify, and understand a result.
 
-**Goal:** stop shipping a marketing page as the product.
+### Required data work
 
-Runs alongside C rather than after it.
+This segment includes or follows the match migration, RLS policies, policy tests,
+`submit_match()` RPC, mutation actions, and typed match queries described by the current
+product decisions. UI completion cannot be declared against fixtures alone.
 
-- Authenticated navigation: groups, matches, standings, profile.
-- Move the current landing page to a signed-out marketing route and make the root route
-  redirect authenticated users into the app.
-- Loading and empty states for every list, since a pilot group starts with zero matches.
-- Accessibility pass: keyboard navigation, focus states, form labels, and error
-  announcements. The existing landing page sets a good bar; hold new screens to it.
-- Verify the installed PWA on real iOS and Android hardware. Installation is the only
-  distribution channel during the pilot, per the ADR.
+### Match card specification
 
----
+Every match card uses one data model and supports:
 
-## 8. Milestone E — Ratings
+- compact dashboard/list and expanded history variants;
+- completed, retired, and walkover outcomes;
+- pending confirmation, confirmed, rejected, expired, and voided states;
+- two or three sets, optional tiebreak points, and winner emphasis;
+- group, played date, submitted/confirmed context, and rating delta when available;
+- contextual action for confirm, reject, edit, withdraw, view, or organizer void;
+- inactive/former-player presentation without erasing historical identity.
 
-**Status: implemented and database-reviewed on this branch.**
+### Match list
 
-**Goal:** the global Elo the product promises.
+- Build `/matches` with Pending your action, Awaiting opponent, and History sections.
+- Add status, group, player, and date filters with a clear reset.
+- Keep filter state in the URL when it affects a shareable view.
+- Use pagination or an explicit load-more pattern before match history becomes large;
+  do not ship an unbounded client list.
 
-- Compute ratings from confirmed, non-void matches ordered by **`confirmed_at`**, as a
-  derived computation — a SQL function or view — not a mutable column.
-- One function, parameterized by an optional group filter, serves both the global rating
-  and per-group standings.
-- `K = 32`, starting rating 1500, `MOV_M = 0.25`, all named constants in one place. They
-  are calibration knobs and will need tuning against real pilot results.
-- Only promote to a stored table when a measurement shows the fold is too slow. At pilot
-  volume it is milliseconds.
-- Rating history per player, and a rating change shown on each match.
-- Hand-computed fixtures: a 1.0× three-setter, a 1.25× double bagel, a skipped walkover,
-  a retirement rated on partial games, and a voided match dropping out of the fold.
-- **Regression test for the ordering:** submit and confirm a backdated match, then assert
-  no prior rating moved. Ordering by `played_on` instead of `confirmed_at` is a silent
-  correctness bug.
+### Score submission
 
----
+- Build a guided mobile-first flow: group, opponent, date, outcome, sets, review, submit.
+- Default the date to today while allowing a past date.
+- Add/remove the third set based on valid match state rather than presenting all fields
+  as one dense form.
+- Reveal tiebreak points only for a 7-6 set.
+- Support completed, retirement with partial score, and scoreless walkover paths.
+- Validate as the user proceeds, retain entered values after recoverable server errors,
+  and let the database remain the final legality authority.
+- Show a plain-language review screen explaining that the opponent must confirm and the
+  match becomes immutable after confirmation.
 
-## 9. Milestone F — Pilot readiness
+### Match detail and verification
 
-**Status: cloud databases and initial Vercel production deployment provisioned.**
+- Show the complete score, status timeline, submitter, dates, group, and rating impact.
+- Give the opponent clear Confirm score and Reject score actions with confirmation.
+- Let the submitter edit or withdraw only while pending.
+- Mark a pending item older than 14 days as expired without implying a scheduled job.
+- Give organizers a reasoned void flow; never offer score editing on confirmed matches.
 
-- The scripted synthetic backup/restore drill compares content, schema, security metadata,
-  ratings, and restored policy tests in two isolated databases.
-- Server and client-boundary errors emit bounded, sanitized structured runtime events.
-- Environment, deployment, rollback, recovery, and device runbooks live under
-  `docs/operations/`.
-- CI exercises database policies, real overlapping transactions, generated-type drift,
-  and isolated desktop/mobile match flows.
-- Separate preview and production Supabase Cloud projects were created and migrated on
-  2026-09-14. Cloud recovery rehearsal, deployment smoke tests, and physical devices
-  remain external launch steps.
-- Vercel has independent Preview and Production environment values. The initial branch
-  deployment is live at `https://tennis-app-vert.vercel.app`, and protected previews use
-  the stable `https://tennis-app-preview-max-be74.vercel.app` alias. The organization
-  owner controls GitHub App installation, so prebuilt-output GitHub Actions jobs provide
-  automatic deployments instead. Authenticated smoke checks and a post-merge production
-  deployment remain.
+### Done when
+
+- A score can be submitted, corrected while pending, confirmed/rejected by the opponent,
+  withdrawn by the submitter, and voided by an organizer where allowed.
+- No UI path allows the submitter to confirm their own match or mutate a confirmed score.
+- Unit tests cover all score/outcome/status render variants and score-entry transitions.
+- Mobile Playwright covers submission through confirmation and the resulting history
+  update with two test accounts.
 
 ---
 
-## 10. Suggested order
+## 10. Segment 6 - standings and ratings
 
+**Goal:** make the consequence of every confirmed match easy to understand.
+
+### Required data work
+
+- Implement the derived rating fold over confirmed, non-void matches ordered by
+  `confirmed_at`, never `played_on`.
+- Keep the starting rating `1500`, `K = 32`, and `MOV_M = 0.25` named in one database
+  implementation.
+- Return global rating, group-filtered rating, record, position, movement where defined,
+  and rating history without introducing a stored `rating` column.
+
+### Standings experience
+
+- Build `/standings` with Global and group-scoped views.
+- Create a compact mobile ranking list and a richer desktop table from the same data.
+- Show rank, player, rating, wins/losses, matches played, recent form, and inactive state.
+- Define deterministic tie presentation; do not imply a unique rank when the underlying
+  rule considers players tied.
+- Add search for larger groups and a direct path to the player's profile.
+- Explain ratings in concise product language, including why match date and rating order
+  can differ.
+
+### Rating history
+
+- Add current rating, personal best when derivable, total change, and chronological
+  history to profile and match detail.
+- Prefer an accessible list/table as the source of truth. A chart may enhance it but
+  cannot be the only way to read the values.
+- Show skipped walkovers, rated retirements, and voided results accurately.
+
+### Done when
+
+- Confirming a match changes the affected standings and its cards/details show the same
+  rating delta.
+- Backdating a newly confirmed match does not alter any earlier rating-history entry.
+- Empty, first-match, tied, inactive-player, walkover, retirement, and voided states are
+  covered by tests.
+- Mobile and desktop E2E verify a standings move after confirmation.
+
+---
+
+## 11. Segment 7 - dashboard
+
+**Goal:** make `/dashboard` the fastest route to what the player needs next.
+
+### Layout and priority
+
+1. Required action: pending score confirmations, rejected submissions needing review,
+   or expiring items.
+2. Primary action: log a match.
+3. Rating summary: global rating, recent change, and relevant group position.
+4. Recent results: the latest match cards with direct detail links.
+5. Group pulse: selected group standings preview and member/activity summary.
+6. Tournament pulse: active event and next tournament match when tournament data exists.
+
+### Behavior
+
+- Personalize greeting and context without wasting the first viewport on decoration.
+- Let multi-group users change context without navigating away.
+- Collapse absent sections cleanly rather than filling the page with empty cards.
+- Provide first-run guidance for a user with no group and group-level guidance when no
+  match exists yet.
+- Keep the log-match action reachable at thumb distance on compact screens without
+  covering content or bottom navigation.
+
+### Done when
+
+- The dashboard never shows fabricated activity.
+- Each actionable item leads directly to the matching completion flow.
+- First account, first group, pending action, active player, and no-tournament states all
+  have intentional layouts.
+- The dashboard's critical information fits in a clear hierarchy at 320px, tablet, and
+  wide desktop widths.
+
+---
+
+## 12. Segment 8 - profile and account settings
+
+**Goal:** give every player a useful identity and a safe place to manage their account.
+
+### Public-within-the-app player profile
+
+- Display initials fallback, display name, active groups, current global rating, record,
+  recent form, and match history.
+- Allow group members to navigate from standings, rosters, and match cards to a player
+  profile containing only data they are authorized to see.
+- Keep generated/uploaded avatars out of this milestone; generated avatars remain
+  deferred in the product decisions.
+
+### Own profile
+
+- Add display-name editing with validation, pending state, success feedback, and stale
+  session/data reconciliation.
+- Add personal rating history, group memberships, and filters for the player's match
+  history.
+- Make empty states useful for a new player without inventing performance statistics.
+
+### Settings
+
+- Separate Profile, Account & security, and Session actions.
+- Link into the existing password-reset/update flow rather than collecting passwords in
+  an unrelated profile form.
+- Add clear sign-out and account-deletion information. Account deletion itself must not
+  ship until its confirmation, reauthentication, cascade consequences, and support path
+  are explicitly designed.
+
+### Done when
+
+- A player can update their display name and see the change across the shell, standings,
+  groups, and match cards after server confirmation.
+- Another authorized group member can open the player's permitted profile without seeing
+  account-private fields such as email.
+- Profile and settings pass privacy, authorization, empty-state, keyboard, and mobile
+  interaction tests.
+
+---
+
+## 13. Segment 9 - tournaments
+
+**Goal:** add a real tournament experience without guessing at competition rules.
+
+This segment begins only after Segment 0 produces an accepted tournament decision. The
+recommended first release is **single-elimination, singles, group-scoped**, reusing the
+normal verified match and score-card model. Round-robin and pool play remain later
+formats unless the product decision explicitly changes.
+
+### Tournament list and creation
+
+- Split events into Needs your action, Active, Upcoming, and Completed.
+- Show format, group, dates, entrant count/cap, status, organizer, and viewer state.
+- Build a step-based organizer flow for details, eligibility/group, entrant cap,
+  registration window, seeding method, schedule expectations, review, and publish.
+- Do not advertise registration, bracket generation, or score behavior the backend does
+  not enforce.
+
+### Tournament detail
+
+- Overview: status, key dates, organizer, entrant count, rules summary, and viewer CTA.
+- Entrants: registered/seeded status, withdrawal state, and waitlist only if approved.
+- Draw: horizontally scrollable bracket on compact screens with a round selector and a
+  full bracket on wide screens; preserve an accessible round-by-round list.
+- Schedule/results: chronological match cards linked to normal match detail.
+- Completed state: champion, final result, and tournament summary without inventing
+  unsupported awards or statistics.
+
+### Organizer management
+
+- Registration open/close, entrant approval if required, seeding, draw generation,
+  schedule assignment, withdrawals, match dispute/void escalation, and tournament
+  cancellation according to the accepted contract.
+- Require confirmation for actions that change the draw or tournament status.
+- Record and display consequential organizer actions; do not hide them in transient
+  toasts only.
+
+### Integration rules
+
+- A tournament result uses the same score validation, opponent confirmation, immutable
+  confirmed match, organizer voiding, and derived rating behavior as an ordinary match
+  unless the tournament decision explicitly overrides it.
+- Do not create a visually separate score system for tournaments.
+- Tournament permissions must be enforced by RLS/RPCs, not by organizer-only controls
+  being hidden in the browser.
+
+### Done when
+
+- Organizer and player journeys are defined end to end for create, register, seed,
+  publish draw, submit/verify result, advance winner, withdraw, cancel, and complete.
+- Byes, odd entrant counts, rejected scores, withdrawals, voided results, and event
+  cancellation have explicit UI and tested backend behavior.
+- Bracket information is fully usable by keyboard and screen reader and remains legible
+  at 320px without shrinking text below the design-system minimum.
+- Mobile and desktop E2E cover one complete small tournament from creation to champion.
+
+---
+
+## 14. Segment 10 - cross-product polish and release hardening
+
+**Goal:** make the entire frontend feel like one dependable product.
+
+### State and copy audit
+
+- Verify loading, empty, error, offline, permission-denied, not-found, destructive,
+  success, and partial-data states for every route.
+- Normalize terminology: Tenny, group, organizer, player, match, result, standings,
+  rating, and tournament.
+- Remove placeholder copy, temporary comments exposed through UI, dead links, fake
+  scores, and implementation language from player-facing messages.
+
+### Responsive and accessibility audit
+
+- Test 320px phone, modern phone, tablet portrait/landscape, laptop, and wide desktop.
+- Test browser zoom to 200%, text scaling, keyboard-only navigation, screen reader
+  landmarks/names, reduced motion, high contrast where supported, and landscape safe
+  areas in installed mode.
+- Ensure sticky headers, sheets, dialogs, score rows, tables, brackets, and bottom
+  navigation do not overlap or trap content.
+
+### Performance and resilience
+
+- Set page-level performance budgets after measuring the completed representative routes.
+- Keep large data work on the server, stream useful route sections where appropriate,
+  and avoid sending private rows to the client merely to filter them there.
+- Optimize logo/image assets, font loading, and layout stability.
+- Make recoverable mutations retryable without duplicate match or tournament creation.
+- Add route-level error boundaries around independent dashboard and detail sections when
+  partial rendering is safer than losing the entire page.
+
+### PWA and device QA
+
+- Verify install, launch, theme color, icon mask/safe area, standalone navigation,
+  authentication persistence, deep links, and update behavior on real iOS and Android
+  devices.
+- Verify the explicit online-required state after launch and after connectivity loss.
+- Do not add authenticated offline caching or queued writes.
+
+### Test matrix
+
+- Component tests for every shared primitive and domain-card state.
+- Server/action tests for validation, authorization, and friendly error mapping.
+- Playwright desktop and mobile projects for the critical user journeys.
+- Database policy tests in the same pull request as every new user-data table or RPC.
+- Manual visual comparison against the brand source at each breakpoint before review.
+- Full local gate: `format:check`, `lint`, `typecheck`, `test`, `build`, `test:e2e`, and
+  database tests when schema or policies change.
+
+### Done when
+
+- No production route is a placeholder or relies on permanent fixtures.
+- All critical journeys work in both mobile and desktop Playwright projects.
+- There are no known critical/serious accessibility violations or keyboard blockers.
+- Real-device installed-PWA checks pass on iOS and Android.
+- Error reporting, backup/restore, deploy rollback, and environment separation are ready
+  before anyone outside the pilot is invited.
+
+---
+
+## 15. Delivery sequence
+
+```text
+Segment 0  UI + tournament contract
+    |
+Segment 1  Brand foundation and design system
+    |
+    +--> Segment 2  Public site, auth, and system pages
+    |
+Segment 3  Authenticated application shell
+    |
+Segment 4  Groups and member management
+    |
+Segment 5  Matches and score cards
+    |
+Segment 6  Standings and ratings
+    |
+    +--> Segment 7  Dashboard composition
+    +--> Segment 8  Profile and settings
+    |
+Segment 9  Tournaments
+    |
+Segment 10 Cross-product polish and release hardening
 ```
-Milestone 0  ──▶  decisions and TypeScript 6 landed (done)
-                        │
-Milestone A (auth, proxy.ts, Supabase CLI, migrations) — done, pull request #6
-                        │
-Milestone B (groups, RLS policies and policy tests) — done, pull requests #7 and #8
-                        │
-Milestone C (matches, standings) ══ Milestone D (functional shell) — implemented
-                        │
-Milestone E (ratings) — implemented
-                        │
-Milestone F (cloud databases and initial Vercel deployment ready)
-```
 
-The current edge is application rollout: enable the prepared deployment jobs, run the
-authenticated preview smoke test with two real pilot accounts, obtain the required review,
-merge #20, verify the merge commit's production deployment, and run the production smoke
-and device checks. No real pilot data belongs in the local test stack.
+Segments 2 and the non-shell parts of Segment 3 may proceed in parallel after the
+design system is stable. Segments 7 and 8 may proceed in parallel after the match and
+rating contracts stabilize. Tournament visual primitives may be explored earlier, but
+the production routes wait for the tournament product and data contract.
+
+### Progress (2026-09-18, branch `feat/tenny-frontend`)
+
+The data layer for Segments 5 and 6 (matches, sets, the lifecycle RPCs, the rating fold,
+`get_ratings`, `get_rating_history`, and `group_standings`) comes from pull request #20
+and is already migrated in both cloud projects. This branch builds the finished
+interface on it, adds rejection and void reasons
+(`20260918140000_match_reasons.sql`), and adds tournaments
+(`20260918150000_tournaments.sql`). Operations material from #20 lives in
+[`docs/operations/`](docs/operations/).
+
+| Segment                 | State                                                                                                                                                                                                                                                                                                                                      |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 0 UI contract           | Done: [`docs/design/ui-direction.md`](docs/design/ui-direction.md). Typefaces and the tournament contract ([ADR 0004](docs/decisions/0004-tournaments-v1.md)) accepted by the product owner.                                                                                                                                               |
+| 1 Design system         | Done: tokens with contrast tests, type roles, brand components, primitives in `src/components/ui`, domain components in `src/components/{matches,ratings,tournaments}`. Component tests stand in for a showcase route.                                                                                                                     |
+| 2 Public, auth, system  | Done: landing page, auth shell with password reveal and kept input, link-failure states, branded 404, error, and global error. Signed-in visitors go from `/` to `/dashboard`.                                                                                                                                                             |
+| 3 Shell                 | Done: `(app)` route group, five-item bottom bar and rail, header menu, skip link, offline banner, route skeleton, error and not-found boundaries inside the shell. Group context is chosen per page rather than in the shell.                                                                                                              |
+| 4 Groups                | Done: cards, create and join dialogs, tabbed group page, manage page with role, remove, restore, transfer, rotate, and leave flows.                                                                                                                                                                                                        |
+| 5 Matches               | Done: schema, RLS, RPCs, and 36 policy tests; guided score form; list with URL filters and paging; detail with confirm, reject, edit, withdraw, and void.                                                                                                                                                                                  |
+| 6 Standings and ratings | Done: derived fold with the ADR 0002 backdating regression test, overall and group standings with ties, rating history.                                                                                                                                                                                                                    |
+| 7 Dashboard             | Done, including the tournament pulse.                                                                                                                                                                                                                                                                                                      |
+| 8 Profile and settings  | Done. Account deletion is information only, as this roadmap requires.                                                                                                                                                                                                                                                                      |
+| 9 Tournaments           | Done: schema, RLS, draw with standard seeding and byes, advancement on confirmation, voiding, withdrawal, walkover, no-show, cancellation, event log, 34 policy tests, bracket UI, organizer tools, and a creation-to-champion journey. The create flow is one ordered page rather than separate steps, since it asks six short questions. |
+| 10 Hardening            | Automated items done: axe WCAG 2.2 AA checks and 320px and landscape reflow on every route, mobile and desktop Playwright journeys run in CI against a throwaway local stack, and budgets below.                                                                                                                                           |
+
+**Performance budgets**, measured on a production build with seeded data: every route
+currently ships 155 to 176 KB of compressed JavaScript and 247 to 275 KB in total, with
+no layout shift. Budgets: at most 200 KB of JavaScript per route, CLS below 0.1, and LCP
+below 2.5 s on a mid-range phone over 4G.
+
+**Still manual before inviting anyone outside the pilot.** These cannot be done from
+the repository:
+
+- Apply `20260918140000_match_reasons.sql` and `20260918150000_tournaments.sql` to the
+  preview and production projects, following
+  [`docs/operations/environments.md`](docs/operations/environments.md).
+- A screen-reader pass (VoiceOver on iOS, TalkBack on Android) over the match loop and a
+  tournament.
+- Installed-PWA checks on real iOS and Android devices, per
+  [`docs/operations/device-checks.md`](docs/operations/device-checks.md).
+- Authenticated preview and production smoke tests with two real pilot accounts.
+- Brand-owner sign-off on the derived reversed lockups.
 
 ---
 
-## 11. Standing rules
+## 16. Standing engineering rules
 
-Carried from `CONTRIBUTING.md` and the ADR; repeated because they are easy to skip under
-delivery pressure.
-
+- Check the relevant guide in `node_modules/next/dist/docs/` before using a remembered
+  Next.js API. This repository's Next.js version has breaking convention changes.
+- Keep pages focused on composition. Put reusable visual primitives and domain
+  components in focused component modules, and keep server data access out of client
+  components unless interactivity truly requires it.
+- Default to Server Components; add `"use client"` at the smallest interactive boundary.
+- Keep authorization and validation on the server/database even when the UI prevents an
+  invalid action.
 - Every user-data table ships with RLS policies and policy tests in the same pull request.
-- Ratings are derived. A pull request adding a stored `rating` column needs a new
-  decision record.
-- No seeded or destructive end-to-end tests against any hosted Supabase project.
-- Service-role keys and database passwords are server-only and never carry a
-  `NEXT_PUBLIC_` prefix.
-- Run the full local gate before requesting review: `format:check`, `lint`, `typecheck`,
-  `test`, `build`, plus `test:e2e` when routes, metadata, the manifest, or visible UI change.
-- A local `typecheck` failure naming `LayoutProps` or a `.d 2.ts` file is defect 9, not a
-  type error. Run `rm -rf .next` and re-run before chasing it.
-- This Next.js version differs from what most published guides and training data assume.
-  Check `node_modules/next/dist/docs/` before writing against a remembered API — the
-  `middleware` to `proxy` rename in Milestone A is exactly this trap.
-- Every screen requires the network by design. Do not add caching of authenticated
-  records, queued submissions, or background sync without a new decision record.
+- Ratings are derived. Adding a stored `rating` column requires a new decision record.
+- A confirmed score is immutable. Correction means organizer voiding, never editing.
+- Rating order is `confirmed_at`, never `played_on`.
+- No seeded or destructive E2E tests run against a Supabase project shared with preview
+  or production data.
+- Service-role keys and database passwords never carry a `NEXT_PUBLIC_` prefix.
+- Preserve user input after recoverable form failures and prevent duplicate submissions.
+- Treat mobile layout, accessibility, empty/error states, and tests as part of each
+  segment, not a cleanup phase deferred to Segment 10.
+- Do not add doubles, social login, push notifications, generated avatars, authenticated
+  offline caching, round-robin, or pool play without their own approved scope.
