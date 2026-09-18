@@ -21,7 +21,7 @@ export default function ResetPasswordPage() {
         <FormStatus state={state} />
         <SubmitButton>Send reset link</SubmitButton>
       </form>
-      <p className="text-sm text-[var(--muted)]">
+      <p className="text-muted text-sm">
         <Link href="/login" className="underline">
           Back to sign in
         </Link>

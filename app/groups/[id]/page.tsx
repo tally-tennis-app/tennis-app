@@ -28,22 +28,22 @@ export default async function GroupPage({
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 px-5 py-12">
       <div className="flex flex-col gap-1">
-        <Link href="/groups" className="text-sm text-[var(--muted)] underline">
+        <Link href="/groups" className="text-muted text-sm underline">
           All groups
         </Link>
         <h1 className="text-2xl font-semibold">{group.name}</h1>
       </div>
 
       {typeof error === "string" ? (
-        <p role="alert" className="text-sm text-[var(--clay)]">
+        <p role="alert" className="text-critical text-sm">
           {error}
         </p>
       ) : null}
 
-      <section className="flex flex-col gap-2 rounded border border-[var(--line)] p-4">
+      <section className="border-line bg-surface flex flex-col gap-2 border p-4">
         <h2 className="text-lg font-semibold">Invite code</h2>
         <p className="font-mono text-xl tracking-widest">{group.inviteCode}</p>
-        <p className="text-sm text-[var(--muted)]">
+        <p className="text-muted text-sm">
           Expires {new Date(group.inviteExpiresAt).toLocaleDateString()}. Any
           member can share this code; an organizer can rotate it to revoke it.
         </p>
@@ -52,7 +52,7 @@ export default async function GroupPage({
             <input type="hidden" name="groupId" value={group.id} />
             <button
               type="submit"
-              className="rounded border border-[var(--line)] px-3 py-1.5 text-sm font-medium"
+              className="border-line-strong border px-3 py-1.5 text-sm font-medium"
             >
               Rotate code
             </button>
@@ -66,13 +66,11 @@ export default async function GroupPage({
           {active.map((member) => (
             <li
               key={member.userId}
-              className="flex flex-wrap items-center justify-between gap-2 rounded border border-[var(--line)] px-4 py-3"
+              className="border-line bg-surface flex flex-wrap items-center justify-between gap-2 border px-4 py-3"
             >
               <span>
                 <span className="font-medium">{member.displayName}</span>{" "}
-                <span className="text-sm text-[var(--muted)]">
-                  {member.role}
-                </span>
+                <span className="text-muted text-sm">{member.role}</span>
               </span>
               {group.viewerIsOrganizer && member.userId !== group.viewerId ? (
                 <span className="flex gap-2">
@@ -88,7 +86,7 @@ export default async function GroupPage({
                     />
                     <button
                       type="submit"
-                      className="rounded border border-[var(--line)] px-3 py-1.5 text-sm"
+                      className="border-line-strong border px-3 py-1.5 text-sm"
                     >
                       {member.role === "organizer" ? "Demote" : "Promote"}
                     </button>
@@ -98,7 +96,7 @@ export default async function GroupPage({
                     <input type="hidden" name="userId" value={member.userId} />
                     <button
                       type="submit"
-                      className="rounded border border-[var(--line)] px-3 py-1.5 text-sm text-[var(--clay)]"
+                      className="border-line-strong text-critical border px-3 py-1.5 text-sm"
                     >
                       Remove
                     </button>
@@ -113,7 +111,7 @@ export default async function GroupPage({
       {departed.length > 0 ? (
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold">Former members</h2>
-          <p className="text-sm text-[var(--muted)]">
+          <p className="text-muted text-sm">
             Their results stay in the group history. Someone an organizer
             removed cannot rejoin with the invite code.
           </p>
@@ -121,7 +119,7 @@ export default async function GroupPage({
             {departed.map((member) => (
               <li
                 key={member.userId}
-                className="flex flex-wrap items-center justify-between gap-2 text-[var(--muted)]"
+                className="text-muted flex flex-wrap items-center justify-between gap-2"
               >
                 <span>
                   {member.displayName}{" "}
@@ -135,7 +133,7 @@ export default async function GroupPage({
                     <input type="hidden" name="userId" value={member.userId} />
                     <button
                       type="submit"
-                      className="rounded border border-[var(--line)] px-3 py-1.5 text-sm"
+                      className="border-line-strong border px-3 py-1.5 text-sm"
                     >
                       Restore
                     </button>
@@ -151,7 +149,7 @@ export default async function GroupPage({
         <input type="hidden" name="groupId" value={group.id} />
         <button
           type="submit"
-          className="rounded border border-[var(--line)] px-4 py-2 text-sm font-medium"
+          className="border-line-strong border px-4 py-2 text-sm font-medium"
         >
           Leave this group
         </button>

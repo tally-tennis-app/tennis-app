@@ -13,7 +13,7 @@ export default async function GroupsPage() {
       <section className="flex flex-col gap-4">
         <h1 className="text-2xl font-semibold">Your groups</h1>
         {groups.length === 0 ? (
-          <p className="text-[var(--muted)]">
+          <p className="text-muted">
             You are not in a group yet. Create one, or join with an invite code
             from an organizer.
           </p>
@@ -23,12 +23,10 @@ export default async function GroupsPage() {
               <li key={group.id}>
                 <Link
                   href={`/groups/${group.id}`}
-                  className="flex items-center justify-between rounded border border-[var(--line)] px-4 py-3 hover:bg-[var(--paper)]"
+                  className="border-line bg-surface hover:bg-surface-sunken flex items-center justify-between border px-4 py-3"
                 >
                   <span className="font-medium">{group.name}</span>
-                  <span className="text-sm text-[var(--muted)]">
-                    {group.role}
-                  </span>
+                  <span className="text-muted text-sm">{group.role}</span>
                 </Link>
               </li>
             ))}

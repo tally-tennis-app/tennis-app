@@ -2,14 +2,14 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Tennis App",
-    short_name: "Tennis",
+    name: "Tenny",
+    short_name: "Tenny",
     description:
       "Verified tennis scores, fair group standings, and a clearer next match.",
     start_url: "/",
     display: "standalone",
-    background_color: "#f0eee5",
-    theme_color: "#102721",
+    background_color: "#f4f1e8",
+    theme_color: "#14304f",
     orientation: "portrait-primary",
     icons: [
       {

@@ -33,10 +33,10 @@ export function Field({
         autoComplete={autoComplete}
         required={required}
         aria-describedby={hintId}
-        className="rounded border border-[var(--line)] bg-[var(--paper)] px-3 py-2 text-base outline-none focus-visible:ring-2 focus-visible:ring-[var(--court)]"
+        className="border-line-strong bg-surface focus-visible:ring-focus border px-3 py-2 text-base outline-none focus-visible:ring-2"
       />
       {hint ? (
-        <p id={hintId} className="text-xs text-[var(--muted)]">
+        <p id={hintId} className="text-muted text-xs">
           {hint}
         </p>
       ) : null}
@@ -51,7 +51,7 @@ export function SubmitButton({ children }: { children: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="rounded bg-[var(--court)] px-4 py-2 font-medium text-[var(--paper)] disabled:opacity-60"
+      className="bg-action text-on-action px-4 py-2 font-medium disabled:opacity-60"
     >
       {pending ? "Working…" : children}
     </button>
@@ -66,12 +66,12 @@ export function FormStatus({ state }: { state: AuthFormState }) {
   return (
     <div aria-live="polite" className="empty:hidden">
       {state.error ? (
-        <p role="alert" className="text-sm text-[var(--clay)]">
+        <p role="alert" className="text-critical text-sm">
           {state.error}
         </p>
       ) : null}
       {state.notice ? (
-        <p className="text-sm text-[var(--court)]">{state.notice}</p>
+        <p className="text-positive text-sm">{state.notice}</p>
       ) : null}
     </div>
   );

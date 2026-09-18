@@ -13,7 +13,7 @@ function Submit({ children }: { children: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="rounded bg-[var(--court)] px-4 py-2 font-medium text-[var(--paper)] disabled:opacity-60"
+      className="bg-action text-on-action px-4 py-2 font-medium disabled:opacity-60"
     >
       {pending ? "Working…" : children}
     </button>
@@ -24,7 +24,7 @@ function FormError({ message }: { message: string | null }) {
   return (
     <div aria-live="polite" className="empty:hidden">
       {message ? (
-        <p role="alert" className="text-sm text-[var(--clay)]">
+        <p role="alert" className="text-critical text-sm">
           {message}
         </p>
       ) : null}
@@ -45,7 +45,7 @@ export function CreateGroupForm() {
         name="name"
         required
         maxLength={60}
-        className="rounded border border-[var(--line)] bg-[var(--paper)] px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-[var(--court)]"
+        className="border-line-strong bg-surface focus-visible:ring-focus border px-3 py-2 outline-none focus-visible:ring-2"
       />
       <FormError message={state.error} />
       <Submit>Create group</Submit>
@@ -66,7 +66,7 @@ export function JoinGroupForm() {
         name="code"
         required
         autoCapitalize="characters"
-        className="rounded border border-[var(--line)] bg-[var(--paper)] px-3 py-2 font-mono uppercase outline-none focus-visible:ring-2 focus-visible:ring-[var(--court)]"
+        className="border-line-strong bg-surface focus-visible:ring-focus border px-3 py-2 font-mono uppercase outline-none focus-visible:ring-2"
       />
       <FormError message={state.error} />
       <Submit>Join group</Submit>

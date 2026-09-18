@@ -7,10 +7,10 @@ export default function ErrorPage({
   retry: () => void;
 }) {
   return (
-    <main className="grid min-h-screen place-items-center bg-[var(--ink)] px-5 text-white">
-      <div className="max-w-xl border-l-2 border-[var(--ball)] pl-6 sm:pl-10">
-        <p className="eyebrow text-[var(--ball)]">Unexpected error</p>
-        <h1 className="font-display mt-4 text-5xl leading-none tracking-tight sm:text-7xl">
+    <main className="bg-brand-navy grid min-h-screen place-items-center px-5 text-white">
+      <div className="border-brand-basil-light max-w-xl border-l-2 pl-6 sm:pl-10">
+        <p className="type-label text-brand-basil-light">Unexpected error</p>
+        <h1 className="type-display mt-4 text-white">
           The ball clipped the net.
         </h1>
         <p className="mt-6 max-w-md leading-7 text-white/65">
@@ -20,7 +20,7 @@ export default function ErrorPage({
         <button
           type="button"
           onClick={retry}
-          className="mt-8 min-h-12 bg-[var(--ball)] px-6 font-semibold text-[var(--ink)] transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--ball)] active:translate-y-px"
+          className="bg-brand-basil-light text-brand-navy-shade focus-visible:outline-brand-basil-light mt-8 min-h-12 px-6 font-semibold transition-transform hover:-translate-y-0.5 active:translate-y-px"
         >
           Try again
         </button>

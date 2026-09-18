@@ -36,7 +36,7 @@ export default function LoginPage() {
       <Suspense fallback={null}>
         <LoginForm />
       </Suspense>
-      <p className="text-sm text-[var(--muted)]">
+      <p className="text-muted text-sm">
         <Link href="/reset-password" className="underline">
           Forgot your password?
         </Link>

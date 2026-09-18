@@ -31,7 +31,7 @@ export default function SignupPage() {
         <FormStatus state={state} />
         <SubmitButton>Create account</SubmitButton>
       </form>
-      <p className="text-sm text-[var(--muted)]">
+      <p className="text-muted text-sm">
         Already have an account?{" "}
         <Link href="/login" className="underline">
           Sign in

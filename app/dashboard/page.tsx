@@ -15,7 +15,7 @@ export default async function DashboardPage() {
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-5 py-16">
       <h1 className="text-2xl font-semibold">Signed in</h1>
-      <p className="text-[var(--muted)]">
+      <p className="text-muted">
         You are signed in as {user.email}. Matches and standings arrive in the
         next milestones.
       </p>
@@ -25,7 +25,7 @@ export default async function DashboardPage() {
       <form action={signOut}>
         <button
           type="submit"
-          className="rounded border border-[var(--line)] px-4 py-2 font-medium"
+          className="border-line-strong border px-4 py-2 font-medium"
         >
           Sign out
         </button>
