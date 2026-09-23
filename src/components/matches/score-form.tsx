@@ -25,8 +25,10 @@ import {
   isTiebreakSet,
   setWinner,
   validateScore,
+  type MatchFormat,
   type Outcome,
   type SetScore,
+  type TiebreakTarget,
 } from "@/src/lib/matches/score";
 
 type Person = { id: string; name: string };
@@ -52,7 +54,22 @@ const outcomes: { value: Outcome; label: string; hint: string }[] = [
   { value: "walkover", label: "Walkover", hint: "No play. Not rated." },
 ];
 
+const formats: { value: MatchFormat; label: string; hint: string }[] = [
+  { value: "match", label: "Match", hint: "Best of three sets." },
+  { value: "set", label: "Single set", hint: "Counts half a match." },
+  { value: "tiebreak", label: "Tiebreak", hint: "Counts half a set." },
+];
+
 const emptySet = (): SetDraft => ({ a: "", b: "", tiebreak: "" });
+
+/** How many score rows a format starts with. */
+function startingSets(format: MatchFormat, outcome: Outcome): SetDraft[] {
+  if (outcome === "walkover") return [];
+  if (format === "match" && outcome === "completed") {
+    return [emptySet(), emptySet()];
+  }
+  return [emptySet()];
+}
 
 function toDraft(sets: SetScore[]): SetDraft[] {
   return sets.map((set) => ({
@@ -62,8 +79,21 @@ function toDraft(sets: SetScore[]): SetDraft[] {
   }));
 }
 
-function toScores(drafts: SetDraft[]): SetScore[] | null {
+function toScores(
+  drafts: SetDraft[],
+  format: MatchFormat = "match",
+  target: TiebreakTarget = 10,
+): SetScore[] | null {
   if (drafts.some((set) => set.a === "" || set.b === "")) return null;
+  // A standalone tiebreak holds points rather than games, plus its target.
+  if (format === "tiebreak") {
+    return drafts.map((set) => ({
+      a: Number(set.a),
+      b: Number(set.b),
+      tiebreak: null,
+      target,
+    }));
+  }
   return drafts.map((set) => ({
     a: Number(set.a),
     b: Number(set.b),
@@ -95,6 +125,7 @@ export type ScoreFormInitial = {
   opponent: Person;
   playedOn: string;
   outcome: Outcome;
+  format: MatchFormat;
   sets: SetScore[];
   winnerId: string;
 };
@@ -112,8 +143,11 @@ export function ScoreForm({
   groups?: GroupWithRoster[];
   /** Present when editing a pending or rejected submission. */
   initial?: ScoreFormInitial;
-  /** Present when submitting a tournament tie: the draw fixes the players. */
-  tie?: { id: string; group: Person; opponent: Person };
+  /**
+   * Present when submitting a tournament tie: the draw fixes the players and
+   * the tournament fixes the format.
+   */
+  tie?: { id: string; group: Person; opponent: Person; format: MatchFormat };
   requestId?: string;
   today: string;
   preselectGroup?: string;
@@ -135,6 +169,14 @@ export function ScoreForm({
   const [playedOn, setPlayedOn] = useState(initial?.playedOn ?? today);
   const [outcome, setOutcome] = useState<Outcome>(
     initial?.outcome ?? "completed",
+  );
+  // A tie inherits its tournament's format and cannot change it.
+  const fixedFormat = tie?.format;
+  const [format, setFormat] = useState<MatchFormat>(
+    fixedFormat ?? initial?.format ?? "match",
+  );
+  const [target, setTarget] = useState<TiebreakTarget>(
+    initial?.sets[0]?.target ?? 10,
   );
   const [sets, setSets] = useState<SetDraft[]>(
     initial ? toDraft(initial.sets) : [emptySet(), emptySet()],
@@ -171,8 +213,8 @@ export function ScoreForm({
     moved.current = true;
   }, [step]);
 
-  const scores = outcome === "walkover" ? [] : toScores(sets);
-  const validation = scores ? validateScore(outcome, scores) : null;
+  const scores = outcome === "walkover" ? [] : toScores(sets, format, target);
+  const validation = scores ? validateScore(outcome, scores, format) : null;
   const winnerId =
     validation?.error === null && validation.winner
       ? validation.winner === "a"
@@ -191,7 +233,11 @@ export function ScoreForm({
         if (playedOn > today) return "The date played cannot be in the future.";
         return null;
       case "score":
-        if (!scores) return "Enter both scores for every set.";
+        if (!scores) {
+          return format === "tiebreak"
+            ? "Enter both players' points."
+            : "Enter both scores for every set.";
+        }
         return validation?.error ?? null;
       case "winner":
         return winner
@@ -226,6 +272,10 @@ export function ScoreForm({
   function chooseOutcome(next: Outcome) {
     setOutcome(next);
     setWinner_("");
+    if (format !== "match") {
+      setSets(startingSets(format, next));
+      return;
+    }
     setSets(
       next === "walkover"
         ? []
@@ -239,11 +289,21 @@ export function ScoreForm({
     );
   }
 
+  // Games and points are not interchangeable, so a format change starts over
+  // rather than carrying a half-entered score into a different shape.
+  function chooseFormat(next: MatchFormat) {
+    setFormat(next);
+    setWinner_("");
+    setSets(startingSets(next, outcome));
+  }
+
   function updateSet(position: number, patch: Partial<SetDraft>) {
     const next = sets.map((set, i) =>
       i === position ? { ...set, ...patch } : set,
     );
-    setSets(outcome === "completed" ? withDecider(next) : next);
+    setSets(
+      format === "match" && outcome === "completed" ? withDecider(next) : next,
+    );
   }
 
   const preview = {
@@ -251,6 +311,7 @@ export function ScoreForm({
     group: { id: groupId, name: group?.name ?? "" },
     playedOn,
     outcome,
+    format,
     status: "pending" as const,
     submitter: viewer,
     opponent: opponent ?? { id: "opponent", name: "Opponent" },
@@ -275,6 +336,7 @@ export function ScoreForm({
       <input type="hidden" name="opponent" value={opponentId} />
       <input type="hidden" name="playedOn" value={playedOn} />
       <input type="hidden" name="outcome" value={outcome} />
+      <input type="hidden" name="format" value={format} />
       <input type="hidden" name="sets" value={JSON.stringify(scores ?? [])} />
       <input type="hidden" name="winner" value={winnerId ?? ""} />
       {requestId ? (
@@ -314,7 +376,10 @@ export function ScoreForm({
                 group: "Which group was this match in?",
                 opponent: "Who did you play?",
                 details: "When did you play, and how did it end?",
-                score: "What was the score?",
+                score:
+                  format === "tiebreak"
+                    ? "How did the tiebreak finish?"
+                    : "What was the score?",
                 winner:
                   outcome === "retired"
                     ? "Who retired?"
@@ -377,6 +442,29 @@ export function ScoreForm({
             </div>
             <div className="flex flex-col gap-2">
               <p
+                id="format-label"
+                className="text-ink-strong text-sm font-semibold"
+              >
+                What you played
+              </p>
+              {fixedFormat ? (
+                <p className="text-muted text-sm">
+                  {formats.find((f) => f.value === fixedFormat)?.label} — set by
+                  the tournament.
+                </p>
+              ) : (
+                <ChoiceList
+                  name="format-choice"
+                  labelledBy="format-label"
+                  value={format}
+                  onChange={(value) => chooseFormat(value as MatchFormat)}
+                  options={formats}
+                  columns
+                />
+              )}
+            </div>
+            <div className="flex flex-col gap-2">
+              <p
                 id="outcome-label"
                 className="text-ink-strong text-sm font-semibold"
               >
@@ -400,6 +488,9 @@ export function ScoreForm({
             names={[viewer.name, opponent?.name ?? "Opponent"]}
             onChange={updateSet}
             retired={outcome === "retired"}
+            format={format}
+            target={target}
+            onTargetChange={setTarget}
             onAdd={() => setSets([...sets, emptySet()])}
             onRemove={() => setSets(sets.slice(0, -1))}
           />
@@ -553,11 +644,38 @@ function GamesInput({
   );
 }
 
+/** Two digits, 0 to 99: tiebreak points, unlike games, run past nine. */
+function PointsInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <input
+      aria-label={label}
+      inputMode="numeric"
+      autoComplete="off"
+      maxLength={2}
+      pattern="[0-9]{1,2}"
+      value={value}
+      onChange={(event) => onChange(event.target.value.replace(/\D/g, ""))}
+      className="border-line-strong bg-surface type-score focus-visible:ring-focus size-14 border text-center text-2xl outline-none focus-visible:ring-2"
+    />
+  );
+}
+
 function ScoreGrid({
   sets,
   names,
   onChange,
   retired,
+  format,
+  target,
+  onTargetChange,
   onAdd,
   onRemove,
 }: {
@@ -565,9 +683,68 @@ function ScoreGrid({
   names: [string, string];
   onChange: (position: number, patch: Partial<SetDraft>) => void;
   retired: boolean;
+  format: MatchFormat;
+  target: TiebreakTarget;
+  onTargetChange: (target: TiebreakTarget) => void;
   onAdd: () => void;
   onRemove: () => void;
 }): ReactNode {
+  if (format === "tiebreak") {
+    const [set] = sets;
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-2">
+          <p
+            id="target-label"
+            className="text-ink-strong text-sm font-semibold"
+          >
+            Points to win
+          </p>
+          <ChoiceList
+            name="target-choice"
+            labelledBy="target-label"
+            value={String(target)}
+            onChange={(value) =>
+              onTargetChange(Number(value) as TiebreakTarget)
+            }
+            options={[
+              { value: "7", label: "7 points" },
+              { value: "10", label: "10 points" },
+            ]}
+            columns
+          />
+        </div>
+        <p className="text-muted text-sm">
+          {retired
+            ? "Enter the points as they stood when play stopped."
+            : `First to ${target}, win by two. Enter both players' points.`}
+        </p>
+        <fieldset className="flex flex-col gap-3">
+          <legend className="text-ink-strong mb-2 font-semibold">Points</legend>
+          <div className="flex flex-wrap items-end gap-4">
+            {[0, 1].map((side) => (
+              <div key={side} className="flex flex-col gap-1">
+                <span
+                  aria-hidden
+                  className="text-muted max-w-32 truncate text-sm"
+                >
+                  {names[side]}
+                </span>
+                <PointsInput
+                  label={`${names[side]} tiebreak points`}
+                  value={side === 0 ? (set?.a ?? "") : (set?.b ?? "")}
+                  onChange={(value) =>
+                    onChange(0, side === 0 ? { a: value } : { b: value })
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        </fieldset>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-5">
       {retired ? (
@@ -581,7 +758,7 @@ function ScoreGrid({
         const b = Number(set.b);
         const tiebreak =
           set.a !== "" && set.b !== "" && isTiebreakSet({ a, b });
-        const label = `Set ${position + 1}`;
+        const label = format === "set" ? "Set" : `Set ${position + 1}`;
         return (
           <fieldset key={position} className="flex flex-col gap-3">
             <legend className="text-ink-strong mb-2 font-semibold">
@@ -634,7 +811,7 @@ function ScoreGrid({
           </fieldset>
         );
       })}
-      {retired ? (
+      {retired && format === "match" ? (
         <div className="flex flex-wrap gap-3">
           {sets.length < 3 ? (
             <Button variant="secondary" size="sm" onClick={onAdd}>

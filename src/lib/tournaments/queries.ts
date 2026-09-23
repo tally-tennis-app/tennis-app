@@ -14,7 +14,7 @@ import {
 } from "@/src/lib/tournaments/types";
 
 const summaryColumns = `
-  id, name, group_id, status, entrant_cap, seeding, round_days, draw_size,
+  id, name, group_id, status, entrant_cap, seeding, round_days, draw_size, format,
   created_at, started_at, completed_at, cancelled_at, cancel_reason, champion_id,
   groups(name),
   champion:profiles!tournaments_champion_id_fkey(display_name),
@@ -28,6 +28,7 @@ type SummaryRow = {
   status: string;
   entrant_cap: number;
   seeding: string;
+  format: string;
   round_days: number;
   draw_size: number | null;
   created_at: string;
@@ -55,6 +56,7 @@ async function toSummary(
     entrantCap: row.entrant_cap,
     entrantCount: row.tournament_entrants.length,
     seeding: row.seeding as "rating" | "random",
+    format: row.format as TournamentSummary["format"],
     roundDays: row.round_days,
     drawSize: row.draw_size,
     createdAt: row.created_at,

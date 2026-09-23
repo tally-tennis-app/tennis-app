@@ -15,6 +15,7 @@ const exampleMatch: MatchView = {
   group: { id: "example", name: "Riverside Ladder" },
   playedOn: "2026-09-12",
   outcome: "completed",
+  format: "match",
   status: "confirmed",
   submitter: { id: "priya", name: "Priya Raman" },
   opponent: { id: "tomas", name: "Tomás Ortega" },

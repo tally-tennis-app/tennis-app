@@ -1,4 +1,9 @@
-import type { Outcome, SetScore, Side } from "@/src/lib/matches/score";
+import type {
+  MatchFormat,
+  Outcome,
+  SetScore,
+  Side,
+} from "@/src/lib/matches/score";
 
 /** What a player sees. Expired and voided are derived, not stored. */
 export type MatchStatus =
@@ -12,6 +17,8 @@ export type MatchView = {
   /** YYYY-MM-DD. Display and sorting only; ratings order by confirmedAt. */
   playedOn: string;
   outcome: Outcome;
+  /** Weights the rating: a set is half a match, a tiebreak half a set. */
+  format: MatchFormat;
   status: MatchStatus;
   /** Side A. */
   submitter: MatchPlayer;
