@@ -8,12 +8,29 @@
 
 export type Outcome = "completed" | "retired" | "walkover";
 
-/** Games for side A (the submitter) and side B (the opponent). */
+/**
+ * A best-of-three match, one set, or one standalone tiebreak. A set is worth
+ * half a match and a tiebreak half a set; see
+ * docs/decisions/0005-short-formats-and-rating-weights.md.
+ */
+export type MatchFormat = "match" | "set" | "tiebreak";
+
+export const matchFormats: MatchFormat[] = ["match", "set", "tiebreak"];
+
+/** Points needed to win a standalone tiebreak. */
+export type TiebreakTarget = 7 | 10;
+
+/**
+ * Games for side A (the submitter) and side B (the opponent). On a standalone
+ * tiebreak, a and b are points rather than games and target is set.
+ */
 export type SetScore = {
   a: number;
   b: number;
   /** Tiebreak points of the set's loser, only on a 7-6 set: 7-6(5). */
   tiebreak?: number | null;
+  /** 7 or 10 on a standalone tiebreak, absent on an ordinary set. */
+  target?: TiebreakTarget | null;
 };
 
 export type Side = "a" | "b";
@@ -22,6 +39,21 @@ export type Side = "a" | "b";
 export function isCompleteSet({ a, b }: SetScore): boolean {
   const [high, low] = a > b ? [a, b] : [b, a];
   return (high === 6 && low <= 4) || (high === 7 && (low === 5 || low === 6));
+}
+
+/**
+ * First to the target, win by two: 10-8 and 12-10 stand, 10-9 and 11-10 do not.
+ */
+export function isCompleteTiebreak({ a, b, target }: SetScore): boolean {
+  if (target == null) return false;
+  const [high, low] = a > b ? [a, b] : [b, a];
+  if (high < target) return false;
+  return high === target ? low <= target - 2 : high - low === 2;
+}
+
+export function tiebreakWinner(set: SetScore): Side | null {
+  if (!isCompleteTiebreak(set)) return null;
+  return set.a > set.b ? "a" : "b";
 }
 
 export function setWinner(set: SetScore): Side | null {
@@ -39,14 +71,23 @@ type Validation = { error: string } | { error: null; winner: Side | null };
  * Checks a full submission. For a completed match the winner is derived from
  * the sets. A retirement or walkover returns null: the player names the winner.
  */
-export function validateScore(outcome: Outcome, sets: SetScore[]): Validation {
+export function validateScore(
+  outcome: Outcome,
+  sets: SetScore[],
+  format: MatchFormat = "match",
+): Validation {
   if (outcome === "walkover") {
     return sets.length === 0
       ? { error: null, winner: null }
       : { error: "A walkover has no score." };
   }
 
+  if (format === "tiebreak") return validateTiebreak(outcome, sets);
+
   if (sets.length > 3) return { error: "A match has at most three sets." };
+  if (format === "set" && sets.length > 1) {
+    return { error: "A single set match has one set." };
+  }
   if (outcome === "retired" && sets.length === 0) {
     return { error: "Enter the score as it stood when play stopped." };
   }
@@ -73,12 +114,14 @@ export function validateScore(outcome: Outcome, sets: SetScore[]): Validation {
   }
 
   const wins = { a: 0, b: 0 };
+  // A single set is decided by its one set; a match needs two.
+  const needed = format === "set" ? 1 : 2;
 
   for (const [index, set] of sets.entries()) {
     const isLast = index === sets.length - 1;
     const label = `Set ${index + 1}`;
 
-    if (wins.a === 2 || wins.b === 2) {
+    if (wins.a === needed || wins.b === needed) {
       return { error: "The match was already decided before this set." };
     }
 
@@ -98,17 +141,58 @@ export function validateScore(outcome: Outcome, sets: SetScore[]): Validation {
   }
 
   if (outcome === "completed") {
-    if (wins.a === 2) return { error: null, winner: "a" };
-    if (wins.b === 2) return { error: null, winner: "b" };
-    return { error: "A completed match needs one player to win two sets." };
-  }
-
-  if (wins.a === 2 || wins.b === 2) {
+    if (wins.a === needed) return { error: null, winner: "a" };
+    if (wins.b === needed) return { error: null, winner: "b" };
     return {
-      error: "One player already won two sets, so the match was completed.",
+      error:
+        format === "set"
+          ? "A completed single set needs a finished set."
+          : "A completed match needs one player to win two sets.",
     };
   }
 
+  if (wins.a === needed || wins.b === needed) {
+    return {
+      error:
+        format === "set"
+          ? "The set was finished, so the match was completed."
+          : "One player already won two sets, so the match was completed.",
+    };
+  }
+
+  return { error: null, winner: null };
+}
+
+/** One standalone tiebreak, entered as both players' points. */
+function validateTiebreak(outcome: Outcome, sets: SetScore[]): Validation {
+  if (sets.length !== 1) {
+    return { error: "A tiebreak match has one tiebreak." };
+  }
+  const [set] = sets;
+  if (set.target !== 7 && set.target !== 10) {
+    return { error: "Choose a tiebreak to 7 or 10 points." };
+  }
+  for (const points of [set.a, set.b]) {
+    if (!Number.isInteger(points) || points < 0 || points > 99) {
+      return { error: "Points must be whole numbers from 0 to 99." };
+    }
+  }
+
+  const finished = isCompleteTiebreak(set);
+  if (outcome === "completed") {
+    const winner = tiebreakWinner(set);
+    if (!winner) {
+      return {
+        error: `${set.a}-${set.b} is not a finished tiebreak. First to ${set.target}, win by two.`,
+      };
+    }
+    return { error: null, winner };
+  }
+
+  // A retirement keeps the points as they stood, which cannot already decide it.
+  if (finished) {
+    return { error: "The tiebreak was finished, so the match was completed." };
+  }
   return { error: null, winner: null };
 }
 
@@ -139,14 +223,32 @@ export type MatchSetInput = {
   tiebreak_a: number | null;
   tiebreak_b: number | null;
   complete: boolean;
+  /** Set only on a standalone tiebreak (20260923120000_match_formats.sql). */
+  tiebreak_target?: number | null;
 };
 
 /**
- * Converts the form's sets to the database shape. The form asks only for the
- * tiebreak loser's points, the way scores are written (7-6(5)); the winner's
- * are implied: seven, or two clear once the loser reached six.
+ * Converts the form's sets to the database shape. For an ordinary set the form
+ * asks only for the tiebreak loser's points, the way scores are written
+ * (7-6(5)); the winner's are implied: seven, or two clear once the loser
+ * reached six. A standalone tiebreak records no games and carries both players'
+ * points with its target.
  */
-export function toMatchSets(sets: SetScore[]): MatchSetInput[] {
+export function toMatchSets(
+  sets: SetScore[],
+  format: MatchFormat = "match",
+): MatchSetInput[] {
+  if (format === "tiebreak") {
+    return sets.map((set, index) => ({
+      set_number: index + 1,
+      games_a: 0,
+      games_b: 0,
+      tiebreak_a: set.a,
+      tiebreak_b: set.b,
+      complete: isCompleteTiebreak(set),
+      tiebreak_target: set.target ?? null,
+    }));
+  }
   return sets.map((set, index) => {
     let tiebreak_a: number | null = null;
     let tiebreak_b: number | null = null;
@@ -166,4 +268,14 @@ export function toMatchSets(sets: SetScore[]): MatchSetInput[] {
       complete: isCompleteSet(set),
     };
   });
+}
+
+/** "Best of 3", "Single set", "Tiebreak to 10" for labels and badges. */
+export function formatLabel(
+  format: MatchFormat,
+  target?: number | null,
+): string {
+  if (format === "set") return "Single set";
+  if (format === "tiebreak") return `Tiebreak to ${target ?? 10}`;
+  return "Best of 3";
 }

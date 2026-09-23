@@ -18,6 +18,9 @@ export default async function ProfilePage() {
           id: viewer.id,
           name: viewer.displayName,
           memberSince: new Date().toISOString(),
+          hometown: viewer.hometown,
+          bio: viewer.bio,
+          avatarUrl: viewer.avatarUrl,
         }
       }
       viewerId={viewer.id}

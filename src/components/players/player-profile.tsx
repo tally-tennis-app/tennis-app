@@ -64,15 +64,21 @@ export async function PlayerProfileView({
 
   return (
     <>
-      <header className="flex flex-wrap items-center gap-4">
-        <Avatar name={player.name} size="lg" />
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h1 className="type-title break-words">{player.name}</h1>
-          <p className="text-muted">
-            On Tenny since {formatDate(player.memberSince)}
-          </p>
+      <header className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <Avatar name={player.name} size="lg" src={player.avatarUrl} />
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <h1 className="type-title break-words">{player.name}</h1>
+            <p className="text-muted">
+              {player.hometown ? `${player.hometown} · ` : ""}On Tenny since{" "}
+              {formatDate(player.memberSince)}
+            </p>
+          </div>
+          {actions}
         </div>
-        {actions}
+        {player.bio ? (
+          <p className="max-w-prose break-words">{player.bio}</p>
+        ) : null}
       </header>
 
       <Panel className="grid grid-cols-1 gap-6 p-5 sm:grid-cols-2 lg:grid-cols-4">

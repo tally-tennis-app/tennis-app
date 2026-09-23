@@ -1,5 +1,5 @@
 import { signOut } from "@/app/(auth)/actions";
-import { DisplayNameForm } from "@/src/components/players/display-name-form";
+import { ProfileForm } from "@/src/components/players/profile-form";
 import { ButtonLink } from "@/src/components/ui/button";
 import { PageHeader, Panel, Section } from "@/src/components/ui/structure";
 import { SubmitButton } from "@/src/components/ui/submit-button";
@@ -16,7 +16,7 @@ export default async function SettingsPage() {
 
       <Section title="Profile" id="profile">
         <Panel className="p-5">
-          <DisplayNameForm current={viewer.displayName} />
+          <ProfileForm viewer={viewer} />
         </Panel>
       </Section>
 

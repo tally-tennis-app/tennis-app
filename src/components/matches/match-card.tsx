@@ -13,7 +13,7 @@ import Link from "next/link";
 
 import { Badge } from "@/src/components/ui/structure";
 import { formatDelta, formatPlayedOn } from "@/src/lib/format";
-import { formatScore, type Side } from "@/src/lib/matches/score";
+import { formatLabel, formatScore, type Side } from "@/src/lib/matches/score";
 import {
   sideOf,
   viewerAction,
@@ -72,13 +72,18 @@ export function describeMatch(match: MatchView) {
       ? [match.submitter, match.opponent]
       : [match.opponent, match.submitter];
 
+  const shape =
+    match.format === "match"
+      ? ""
+      : ` (${formatLabel(match.format, match.sets[0]?.target)})`;
+
   if (match.outcome === "walkover") {
-    return `${winner.name} won by walkover against ${loser.name}`;
+    return `${winner.name} won by walkover against ${loser.name}${shape}`;
   }
 
   const score = formatScore(match.sets, winnerSide);
   const retired = match.outcome === "retired" ? `, ${loser.name} retired` : "";
-  return `${winner.name} beat ${loser.name} ${score}${retired}`.trim();
+  return `${winner.name} beat ${loser.name} ${score}${shape}${retired}`.trim();
 }
 
 /**
@@ -191,7 +196,14 @@ export function MatchCard({
   const body = (
     <>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <MatchStatusBadge status={match.status} />
+        <span className="flex flex-wrap items-center gap-2">
+          <MatchStatusBadge status={match.status} />
+          {match.format === "match" ? null : (
+            <Badge tone="neutral">
+              {formatLabel(match.format, match.sets[0]?.target)}
+            </Badge>
+          )}
+        </span>
         <p className="type-meta">
           {match.tournament
             ? `${match.tournament.name}, ${match.tournament.round}`
