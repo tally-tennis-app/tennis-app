@@ -287,7 +287,11 @@ function Members({ group }: { group: GroupDetail }) {
               href={`/players/${member.userId}`}
               className="hover:bg-surface-sunken flex min-h-14 items-center gap-3 px-4 py-2"
             >
-              <Avatar name={member.displayName} size="sm" />
+              <Avatar
+                name={member.displayName}
+                size="sm"
+                src={member.avatarUrl}
+              />
               <span className="text-ink-strong min-w-0 flex-1 truncate font-semibold">
                 {member.displayName}
                 {member.userId === group.viewerId ? " (you)" : ""}

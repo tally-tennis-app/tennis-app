@@ -1,6 +1,7 @@
 import { cache } from "react";
 
 import { requireUser } from "@/src/lib/auth/dal";
+import { avatarUrlsFor } from "@/src/lib/profiles/players";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
 
 export type GroupSummary = {
@@ -12,6 +13,8 @@ export type GroupSummary = {
 export type GroupMember = {
   userId: string;
   displayName: string;
+  /** Signed avatar URL, or null when the player has no picture. */
+  avatarUrl: string | null;
   role: string;
   joinedAt: string;
   leftAt: string | null;
@@ -91,10 +94,16 @@ export const getGroup = cache(
 
     if (memberError) throw memberError;
 
+    // One batched lookup for the whole roster rather than a URL per member.
+    const avatars = await avatarUrlsFor(
+      (memberRows ?? []).map((row) => row.user_id),
+    );
+
     const members: GroupMember[] = (memberRows ?? [])
       .map((row) => ({
         userId: row.user_id,
         displayName: row.profiles?.display_name ?? "Unknown player",
+        avatarUrl: avatars.get(row.user_id) ?? null,
         role: row.role,
         joinedAt: row.joined_at,
         leftAt: row.left_at,

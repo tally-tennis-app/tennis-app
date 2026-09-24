@@ -331,7 +331,12 @@ function Entrants({
           <span className="type-score text-muted w-6 text-right">
             {entrant.seed ?? ""}
           </span>
-          <Avatar name={entrant.player.name} size="sm" muted={entrant.out} />
+          <Avatar
+            name={entrant.player.name}
+            size="sm"
+            muted={entrant.out}
+            src={entrant.avatarUrl}
+          />
           <Link
             href={`/players/${entrant.player.id}`}
             className="text-ink-strong min-w-0 flex-1 truncate font-semibold hover:underline"

@@ -4,6 +4,7 @@ import { requireUser } from "@/src/lib/auth/dal";
 import { asUuid } from "@/src/lib/forms";
 import { listMyGroups } from "@/src/lib/groups/queries";
 import { getMatchesByIds } from "@/src/lib/matches/queries";
+import { avatarUrlsFor } from "@/src/lib/profiles/players";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
 import {
   roundsFor,
@@ -138,6 +139,11 @@ export const getTournament = cache(
     const person = (id: string | null) =>
       id ? { id, name: names.get(id) ?? "Former player" } : null;
 
+    // One batched lookup for the whole entrant list.
+    const avatars = await avatarUrlsFor(
+      (entrants.data ?? []).map((e) => e.user_id),
+    );
+
     const tieRows = ties.data ?? [];
     const matches = new Map(
       (
@@ -163,6 +169,7 @@ export const getTournament = cache(
       entrants: (entrants.data ?? [])
         .map((e) => ({
           player: person(e.user_id)!,
+          avatarUrl: avatars.get(e.user_id) ?? null,
           seed: e.seed,
           registeredAt: e.registered_at,
           withdrawnAt: e.withdrawn_at,

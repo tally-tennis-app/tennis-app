@@ -16,6 +16,8 @@ export type Standing = {
   lastDelta: number | null;
   /** False for a former group member, who keeps their place in history. */
   active: boolean;
+  /** Signed avatar URL, or null when the player has no picture. */
+  avatarUrl: string | null;
 };
 
 export const STARTING_RATING = 1500;
