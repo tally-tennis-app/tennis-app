@@ -699,12 +699,16 @@ below 2.5 s on a mid-range phone over 4G.
 **Still manual before inviting anyone outside the pilot.** These cannot be done from
 the repository:
 
-- Apply `20260918140000_match_reasons.sql`, `20260918150000_tournaments.sql`,
-  `20260923120000_match_formats.sql`, `20260923120100_rejected_match_expiry.sql`, and
-  `20260923120200_profile_details.sql` to the preview and production projects,
-  following [`docs/operations/environments.md`](docs/operations/environments.md). Each
-  is additive with defaults, so the deployed application keeps working between the
-  schema push and the application deployment.
+- Apply `20260923120000_match_formats.sql`,
+  `20260923120100_rejected_match_expiry.sql`, and
+  `20260923120200_profile_details.sql` to **production**, following
+  [`docs/operations/environments.md`](docs/operations/environments.md). Each is
+  additive with defaults, so the deployed application keeps working between the schema
+  push and the application deployment. Preview received all three on 2026-09-24:
+  remote-generated types match the committed contract exactly, and the security
+  advisors are unchanged at 31 warnings with no error-level or anonymous findings.
+  `20260918140000_match_reasons.sql` and `20260918150000_tournaments.sql` were already
+  applied to both projects; an earlier version of this list wrongly said otherwise.
 - A screen-reader pass (VoiceOver on iOS, TalkBack on Android) over the match loop and a
   tournament.
 - Installed-PWA checks on real iOS and Android devices, per
@@ -790,7 +794,9 @@ fallback.
 - [x] A profile shows an uploaded avatar, hometown, and bio; a group peer can read them,
       a stranger cannot, and a write outside the caller's own storage prefix fails.
 - [x] A tournament fixes one format for its whole draw.
-- [ ] Applied to the preview and production projects. This is the manual step above.
+- [x] Applied to preview (2026-09-24) and verified: remote types match the committed
+      contract, advisors unchanged.
+- [ ] Applied to production. This is the manual step above.
 
 ### Deliberately not done
 
