@@ -33,6 +33,59 @@ export async function signAvatar(path: string | null): Promise<string | null> {
 }
 
 /**
+ * Signs many players' avatar paths at once, keyed by player id.
+ *
+ * One signing call however many rows are on the page, and none at all when
+ * nobody has a picture. Callers that already join profiles pass the paths they
+ * have rather than paying for a second query. Players with no picture, or whose
+ * object cannot be signed, are absent from the map and fall back to initials.
+ */
+export async function signAvatars(
+  rows: { id: string; path: string | null | undefined }[],
+): Promise<Map<string, string>> {
+  const withPicture = rows.flatMap((row) =>
+    row.path ? [{ id: row.id, path: row.path }] : [],
+  );
+  if (withPicture.length === 0) return new Map();
+
+  const supabase = await createSupabaseServerClient();
+  const { data: signed } = await supabase.storage
+    .from("avatars")
+    .createSignedUrls(
+      withPicture.map((row) => row.path),
+      AVATAR_URL_SECONDS,
+    );
+
+  const urlByPath = new Map(
+    (signed ?? []).flatMap((item) =>
+      item.signedUrl && item.path ? [[item.path, item.signedUrl]] : [],
+    ),
+  );
+  return new Map(
+    withPicture.flatMap((row) => {
+      const url = urlByPath.get(row.path);
+      return url ? [[row.id, url] as [string, string]] : [];
+    }),
+  );
+}
+
+/** For callers that hold only ids, such as the ratings RPC. */
+export async function avatarUrlsFor(
+  playerIds: string[],
+): Promise<Map<string, string>> {
+  const ids = [...new Set(playerIds)].filter(Boolean);
+  if (ids.length === 0) return new Map();
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, avatar_path")
+    .in("id", ids);
+  return signAvatars(
+    (data ?? []).map((r) => ({ id: r.id, path: r.avatar_path })),
+  );
+}
+
+/**
  * Another player's public-within-the-app identity. RLS returns the profile
  * only to the player themselves or someone who shares a group with them, so
  * null means "not found" and "not yours" alike. Email is never selected.

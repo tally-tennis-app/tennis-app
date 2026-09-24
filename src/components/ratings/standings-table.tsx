@@ -110,7 +110,12 @@ export function StandingsTable({
                 </td>
                 <th scope="row" className="py-3 pr-2 font-normal">
                   <span className="flex min-w-0 items-center gap-3">
-                    <Avatar name={row.name} size="sm" muted={!row.active} />
+                    <Avatar
+                      name={row.name}
+                      size="sm"
+                      muted={!row.active}
+                      src={row.avatarUrl}
+                    />
                     <span className="flex min-w-0 flex-col">
                       {linkPlayers ? (
                         <Link

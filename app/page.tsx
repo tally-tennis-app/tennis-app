@@ -45,6 +45,7 @@ const exampleStandings: Standing[] = rankStandings([
     form: ["W", "W", "L", "W", "W"],
     lastDelta: 14.2,
     active: true,
+    avatarUrl: null,
   },
   {
     playerId: "tomas",
@@ -56,6 +57,7 @@ const exampleStandings: Standing[] = rankStandings([
     form: ["L", "W", "W", "L", "W"],
     lastDelta: -14.2,
     active: true,
+    avatarUrl: null,
   },
   {
     playerId: "grace",
@@ -67,6 +69,7 @@ const exampleStandings: Standing[] = rankStandings([
     form: ["W", "L", "W", "L", "L"],
     lastDelta: 9.8,
     active: true,
+    avatarUrl: null,
   },
   {
     playerId: "okafor",
@@ -78,6 +81,7 @@ const exampleStandings: Standing[] = rankStandings([
     form: ["L", "W", "L", "W", "W"],
     lastDelta: -6.1,
     active: true,
+    avatarUrl: null,
   },
   {
     playerId: "lena",
@@ -89,6 +93,7 @@ const exampleStandings: Standing[] = rankStandings([
     form: ["L", "L", "W", "L", "L"],
     lastDelta: -9.8,
     active: true,
+    avatarUrl: null,
   },
 ]);
 

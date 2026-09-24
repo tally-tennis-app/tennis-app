@@ -4,6 +4,7 @@ import { requireUser } from "@/src/lib/auth/dal";
 import { asUuid } from "@/src/lib/forms";
 import { listMyGroups } from "@/src/lib/groups/queries";
 import { getMatchesByIds } from "@/src/lib/matches/queries";
+import { signAvatars } from "@/src/lib/profiles/players";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
 import {
   roundsFor,
@@ -109,7 +110,7 @@ export const getTournament = cache(
       supabase
         .from("tournament_entrants")
         .select(
-          "user_id, seed, registered_at, withdrawn_at, profiles(display_name)",
+          "user_id, seed, registered_at, withdrawn_at, profiles(display_name, avatar_path)",
         )
         .eq("tournament_id", tournamentId),
       supabase
@@ -138,6 +139,14 @@ export const getTournament = cache(
     const person = (id: string | null) =>
       id ? { id, name: names.get(id) ?? "Former player" } : null;
 
+    // The join above already carried each path, so this only signs them.
+    const avatars = await signAvatars(
+      (entrants.data ?? []).map((e) => ({
+        id: e.user_id,
+        path: e.profiles?.avatar_path,
+      })),
+    );
+
     const tieRows = ties.data ?? [];
     const matches = new Map(
       (
@@ -163,6 +172,7 @@ export const getTournament = cache(
       entrants: (entrants.data ?? [])
         .map((e) => ({
           player: person(e.user_id)!,
+          avatarUrl: avatars.get(e.user_id) ?? null,
           seed: e.seed,
           registeredAt: e.registered_at,
           withdrawnAt: e.withdrawn_at,

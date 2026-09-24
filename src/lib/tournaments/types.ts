@@ -45,6 +45,8 @@ export type Tie = {
 
 export type Entrant = {
   player: Person;
+  /** Signed avatar URL, or null when the player has no picture. */
+  avatarUrl: string | null;
   seed: number | null;
   registeredAt: string;
   withdrawnAt: string | null;

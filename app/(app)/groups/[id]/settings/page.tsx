@@ -76,7 +76,11 @@ export default async function GroupSettingsPage({
                 key={member.userId}
                 className="flex flex-wrap items-center gap-3 px-4 py-3"
               >
-                <Avatar name={member.displayName} size="sm" />
+                <Avatar
+                  name={member.displayName}
+                  size="sm"
+                  src={member.avatarUrl}
+                />
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="text-ink-strong truncate font-semibold">
                     {member.displayName}
@@ -120,7 +124,12 @@ export default async function GroupSettingsPage({
                 key={member.userId}
                 className="flex flex-wrap items-center gap-3 px-4 py-3"
               >
-                <Avatar name={member.displayName} size="sm" muted />
+                <Avatar
+                  name={member.displayName}
+                  size="sm"
+                  muted
+                  src={member.avatarUrl}
+                />
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="text-ink truncate font-semibold">
                     {member.displayName}

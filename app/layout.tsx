@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import { DM_Mono, Schibsted_Grotesk } from "next/font/google";
 import "./globals.css";
@@ -48,7 +49,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       data-scroll-behavior="smooth"
       className={`${schibsted.variable} ${dmMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        {children}
+        {/*
+         * Vercel serves the analytics script from /_vercel/insights, which only
+         * exists on Vercel. Rendering it anywhere else 404s and trips the
+         * zero-console-errors assertion in tests/e2e/foundation.spec.ts, so it
+         * is gated on VERCEL_ENV, which `vercel build` sets and a local or CI
+         * `next build` does not.
+         */}
+        {process.env.VERCEL_ENV ? <Analytics /> : null}
+      </body>
     </html>
   );
 }

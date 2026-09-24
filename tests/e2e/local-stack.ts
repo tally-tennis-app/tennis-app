@@ -93,6 +93,40 @@ export async function signIn(browser: Browser, player: Player): Promise<Page> {
   return page;
 }
 
+// The smallest valid PNG: one opaque pixel.
+const PIXEL = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+/**
+ * Gives a player a profile picture the way the settings form does: one object
+ * under their own prefix, then avatar_path on their row. Setup, not the thing
+ * under test, so it skips the browser.
+ */
+export async function giveAvatar(player: Player) {
+  const { api, publishable } = localStack();
+  const path = `${player.id}/avatar`;
+  const headers = {
+    apikey: publishable,
+    Authorization: `Bearer ${player.token}`,
+  };
+
+  const upload = await fetch(`${api}/storage/v1/object/avatars/${path}`, {
+    method: "POST",
+    headers: { ...headers, "content-type": "image/png" },
+    body: PIXEL,
+  });
+  expect(upload.ok, await upload.text()).toBe(true);
+
+  const update = await fetch(`${api}/rest/v1/profiles?id=eq.${player.id}`, {
+    method: "PATCH",
+    headers: { ...headers, "content-type": "application/json" },
+    body: JSON.stringify({ avatar_path: path }),
+  });
+  expect(update.ok, await update.text()).toBe(true);
+}
+
 /** A group organized by the first player, joined by the rest. */
 export async function groupOf(organizer: Player, ...members: Player[]) {
   const { api, publishable } = localStack();

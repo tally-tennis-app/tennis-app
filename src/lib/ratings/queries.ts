@@ -2,6 +2,7 @@ import { cache } from "react";
 
 import { requireUser } from "@/src/lib/auth/dal";
 import { asUuid } from "@/src/lib/forms";
+import { avatarUrlsFor } from "@/src/lib/profiles/players";
 import { recentResults } from "@/src/lib/matches/queries";
 import {
   rankStandings,
@@ -59,6 +60,11 @@ export const getStandings = cache(
       }
     }
 
+    // One batched lookup for the whole table rather than a URL per row.
+    const avatars = await avatarUrlsFor(
+      (ratings.data ?? []).map((row) => row.player_id),
+    );
+
     const rows = (ratings.data ?? []).map((row) => ({
       playerId: row.player_id,
       name: row.display_name,
@@ -69,6 +75,7 @@ export const getStandings = cache(
       form: form.get(row.player_id) ?? [],
       lastDelta: null,
       active: row.active,
+      avatarUrl: avatars.get(row.player_id) ?? null,
     }));
 
     return {
