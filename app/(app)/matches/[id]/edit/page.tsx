@@ -37,6 +37,7 @@ export default async function EditMatchPage({
             opponent: match.opponent,
             playedOn: match.playedOn,
             outcome: match.outcome,
+            format: match.format,
             sets: match.sets,
             winnerId: match.winnerId,
           }}

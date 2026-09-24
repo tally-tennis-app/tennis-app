@@ -25,7 +25,7 @@ export function ProfileMenu({ viewer }: { viewer: Viewer }) {
         aria-label={`Account menu for ${viewer.displayName}`}
         className="grid size-11 place-items-center"
       >
-        <Avatar name={viewer.displayName} size="sm" />
+        <Avatar name={viewer.displayName} size="sm" src={viewer.avatarUrl} />
       </button>
       <div
         id="profile-menu"

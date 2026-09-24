@@ -43,6 +43,7 @@ export default async function TieResultPage({
             id: next.tie.id,
             group: detail.group,
             opponent: next.opponent,
+            format: detail.format,
           }}
         />
       </div>

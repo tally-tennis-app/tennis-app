@@ -1,3 +1,5 @@
+import type { MatchFormat } from "@/src/lib/matches/score";
+
 import type { MatchView } from "@/src/lib/matches/types";
 
 export type TournamentStatus =
@@ -13,6 +15,8 @@ export type TournamentSummary = {
   entrantCap: number;
   entrantCount: number;
   seeding: "rating" | "random";
+  /** The format every tie in this draw is played in. */
+  format: MatchFormat;
   roundDays: number;
   drawSize: number | null;
   createdAt: string;

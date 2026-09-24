@@ -676,19 +676,20 @@ interface on it, adds rejection and void reasons
 (`20260918150000_tournaments.sql`). Operations material from #20 lives in
 [`docs/operations/`](docs/operations/).
 
-| Segment                 | State                                                                                                                                                                                                                                                                                                                                      |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 0 UI contract           | Done: [`docs/design/ui-direction.md`](docs/design/ui-direction.md). Typefaces and the tournament contract ([ADR 0004](docs/decisions/0004-tournaments-v1.md)) accepted by the product owner.                                                                                                                                               |
-| 1 Design system         | Done: tokens with contrast tests, type roles, brand components, primitives in `src/components/ui`, domain components in `src/components/{matches,ratings,tournaments}`. Component tests stand in for a showcase route.                                                                                                                     |
-| 2 Public, auth, system  | Done: landing page, auth shell with password reveal and kept input, link-failure states, branded 404, error, and global error. Signed-in visitors go from `/` to `/dashboard`.                                                                                                                                                             |
-| 3 Shell                 | Done: `(app)` route group, five-item bottom bar and rail, header menu, skip link, offline banner, route skeleton, error and not-found boundaries inside the shell. Group context is chosen per page rather than in the shell.                                                                                                              |
-| 4 Groups                | Done: cards, create and join dialogs, tabbed group page, manage page with role, remove, restore, transfer, rotate, and leave flows.                                                                                                                                                                                                        |
-| 5 Matches               | Done: schema, RLS, RPCs, and 36 policy tests; guided score form; list with URL filters and paging; detail with confirm, reject, edit, withdraw, and void.                                                                                                                                                                                  |
-| 6 Standings and ratings | Done: derived fold with the ADR 0002 backdating regression test, overall and group standings with ties, rating history.                                                                                                                                                                                                                    |
-| 7 Dashboard             | Done, including the tournament pulse.                                                                                                                                                                                                                                                                                                      |
-| 8 Profile and settings  | Done. Account deletion is information only, as this roadmap requires.                                                                                                                                                                                                                                                                      |
-| 9 Tournaments           | Done: schema, RLS, draw with standard seeding and byes, advancement on confirmation, voiding, withdrawal, walkover, no-show, cancellation, event log, 34 policy tests, bracket UI, organizer tools, and a creation-to-champion journey. The create flow is one ordered page rather than separate steps, since it asks six short questions. |
-| 10 Hardening            | Automated items done: axe WCAG 2.2 AA checks and 320px and landscape reflow on every route, mobile and desktop Playwright journeys run in CI against a throwaway local stack, and budgets below.                                                                                                                                           |
+| Segment                       | State                                                                                                                                                                                                                                                                                                                                      |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 0 UI contract                 | Done: [`docs/design/ui-direction.md`](docs/design/ui-direction.md). Typefaces and the tournament contract ([ADR 0004](docs/decisions/0004-tournaments-v1.md)) accepted by the product owner.                                                                                                                                               |
+| 1 Design system               | Done: tokens with contrast tests, type roles, brand components, primitives in `src/components/ui`, domain components in `src/components/{matches,ratings,tournaments}`. Component tests stand in for a showcase route.                                                                                                                     |
+| 2 Public, auth, system        | Done: landing page, auth shell with password reveal and kept input, link-failure states, branded 404, error, and global error. Signed-in visitors go from `/` to `/dashboard`.                                                                                                                                                             |
+| 3 Shell                       | Done: `(app)` route group, five-item bottom bar and rail, header menu, skip link, offline banner, route skeleton, error and not-found boundaries inside the shell. Group context is chosen per page rather than in the shell.                                                                                                              |
+| 4 Groups                      | Done: cards, create and join dialogs, tabbed group page, manage page with role, remove, restore, transfer, rotate, and leave flows.                                                                                                                                                                                                        |
+| 5 Matches                     | Done: schema, RLS, RPCs, and 36 policy tests; guided score form; list with URL filters and paging; detail with confirm, reject, edit, withdraw, and void.                                                                                                                                                                                  |
+| 6 Standings and ratings       | Done: derived fold with the ADR 0002 backdating regression test, overall and group standings with ties, rating history.                                                                                                                                                                                                                    |
+| 7 Dashboard                   | Done, including the tournament pulse.                                                                                                                                                                                                                                                                                                      |
+| 8 Profile and settings        | Done. Account deletion is information only, as this roadmap requires.                                                                                                                                                                                                                                                                      |
+| 9 Tournaments                 | Done: schema, RLS, draw with standard seeding and byes, advancement on confirmation, voiding, withdrawal, walkover, no-show, cancellation, event log, 34 policy tests, bracket UI, organizer tools, and a creation-to-champion journey. The create flow is one ordered page rather than separate steps, since it asks six short questions. |
+| 10 Hardening                  | Automated items done: axe WCAG 2.2 AA checks and 320px and landscape reflow on every route, mobile and desktop Playwright journeys run in CI against a throwaway local stack, and budgets below.                                                                                                                                           |
+| 11 Short formats and profiles | Done: single set and standalone tiebreak with weighted ratings ([ADR 0005](docs/decisions/0005-short-formats-and-rating-weights.md)), per-tournament format, five-day rejection expiry, and profile avatar, hometown, and bio. See section 17.                                                                                             |
 
 **Performance budgets**, measured on a production build with seeded data: every route
 currently ships 155 to 176 KB of compressed JavaScript and 247 to 275 KB in total, with
@@ -698,9 +699,16 @@ below 2.5 s on a mid-range phone over 4G.
 **Still manual before inviting anyone outside the pilot.** These cannot be done from
 the repository:
 
-- Apply `20260918140000_match_reasons.sql` and `20260918150000_tournaments.sql` to the
-  preview and production projects, following
-  [`docs/operations/environments.md`](docs/operations/environments.md).
+- Apply `20260923120000_match_formats.sql`,
+  `20260923120100_rejected_match_expiry.sql`, and
+  `20260923120200_profile_details.sql` to **production**, following
+  [`docs/operations/environments.md`](docs/operations/environments.md). Each is
+  additive with defaults, so the deployed application keeps working between the schema
+  push and the application deployment. Preview received all three on 2026-09-24:
+  remote-generated types match the committed contract exactly, and the security
+  advisors are unchanged at 31 warnings with no error-level or anonymous findings.
+  `20260918140000_match_reasons.sql` and `20260918150000_tournaments.sql` were already
+  applied to both projects; an earlier version of this list wrongly said otherwise.
 - A screen-reader pass (VoiceOver on iOS, TalkBack on Android) over the match loop and a
   tournament.
 - Installed-PWA checks on real iOS and Android devices, per
@@ -732,3 +740,68 @@ the repository:
   segment, not a cleanup phase deferred to Segment 10.
 - Do not add doubles, social login, push notifications, generated avatars, authenticated
   offline caching, round-robin, or pool play without their own approved scope.
+
+---
+
+## 17. Segment 11 - short formats and richer profiles
+
+Delivered 2026-09-23 on branch `feat/short-formats-and-profiles`, planned in
+[`bug-fixes.md`](bug-fixes.md) and decided in
+[ADR 0005](docs/decisions/0005-short-formats-and-rating-weights.md).
+
+### Short formats
+
+`matches.format` is `match`, `set`, or `tiebreak`. A single set is one ordinary set row.
+A standalone tiebreak is one row with no games, both players' points, and a
+`tiebreak_target` of 7 or 10 - the non-null target is what makes the per-row CHECK exact
+without reading the parent match, so every existing row and games-based rule is
+untouched.
+
+The derived fold weights K by format: 1.0, 0.5, 0.25. A tiebreak's margin comes from
+points rather than games, since it records none. `private.format_weight` sits beside K
+and MOV_M as a calibration knob.
+
+`submit_match` and `edit_match` each gained a trailing `match_format` argument with a
+default, so a caller that names only the original arguments still resolves.
+`edit_match` defaults it to null, meaning "leave the format alone", so an older client
+cannot rewrite a short format into a best-of-three. `submit_tournament_match` keeps its
+signature and reads the format from its tournament.
+
+### Rejection expiry
+
+`matches.rejected_at` is set by `reject_match`, and `match_is_visible(status,
+rejected_at)` is used by both the `matches` and `match_sets` select policies. A rejection
+disappears five days later. The row is kept; nothing deletes match history.
+
+### Profiles
+
+`profiles.hometown`, `profiles.bio`, and `profiles.avatar_path`, all optional, all
+visible to the same group peers who can already see a display name. Pictures live in a
+private `avatars` bucket limited to 2 MB and to JPEG, PNG, or WebP, written only under
+the player's own prefix and read through a short-lived signed URL. Initials remain the
+fallback.
+
+### Done when
+
+- [x] A single set and a tiebreak can be submitted, confirmed, and read back with the
+      right scoreline and a format badge.
+- [x] The database by itself refuses two sets as a single set, a 10-9 tiebreak, games on
+      a tiebreak row, and a target that is not 7 or 10.
+- [x] At equal ratings the same result moves a rating 20 points as a match, 10 as a set,
+      and 5 as a tiebreak, asserted in pgTAP and again through the browser.
+- [x] A rejection is visible on day four and gone on day six, with its sets, for both
+      players.
+- [x] A profile shows an uploaded avatar, hometown, and bio; a group peer can read them,
+      a stranger cannot, and a write outside the caller's own storage prefix fails.
+- [x] A tournament fixes one format for its whole draw.
+- [x] Applied to preview (2026-09-24) and verified: remote types match the committed
+      contract, advisors unchanged.
+- [ ] Applied to production. This is the manual step above.
+
+### Deliberately not done
+
+- No client-side or server-side image downscaling. The 2 MB bucket limit and a 96 px
+  render are the whole control; add a canvas resize if real uploads get heavy.
+- Standings and roster rows still show initials rather than uploaded pictures, which
+  would cost one signed URL per row. The profile, the header menu, and the settings form
+  show the picture.

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  formatLabel,
   formatScore,
   toMatchSets,
   isCompleteSet,
+  isCompleteTiebreak,
   validateScore,
   type SetScore,
 } from "@/src/lib/matches/score";
@@ -141,4 +143,183 @@ describe("toMatchSets", () => {
       },
     ]);
   });
+});
+
+// Short formats. These mirror supabase/tests/matches_validation.test.sql: the
+// database has the final word, so a rule that disagrees here would surface to
+// the player as the generic "Something went wrong" message.
+const tb = (a: number, b: number, target: 7 | 10 = 10): SetScore => ({
+  a,
+  b,
+  target,
+});
+
+describe("single set format", () => {
+  it("accepts one finished set", () => {
+    expect(validateScore("completed", [s(6, 4)], "set")).toEqual({
+      error: null,
+      winner: "a",
+    });
+  });
+
+  it("accepts a set decided by its own tiebreak", () => {
+    expect(validateScore("completed", [s(7, 6, 5)], "set")).toEqual({
+      error: null,
+      winner: "a",
+    });
+  });
+
+  it("names the loser's side when they win the set", () => {
+    expect(validateScore("completed", [s(4, 6)], "set")).toEqual({
+      error: null,
+      winner: "b",
+    });
+  });
+
+  it("rejects a second set", () => {
+    expect(validateScore("completed", [s(6, 4), s(6, 4)], "set").error).toMatch(
+      /one set/,
+    );
+  });
+
+  it("rejects an unfinished set when completed", () => {
+    expect(validateScore("completed", [s(5, 3)], "set").error).toMatch(
+      /not a finished set/,
+    );
+  });
+
+  it("allows a retirement mid-set", () => {
+    expect(validateScore("retired", [s(3, 2)], "set")).toEqual({
+      error: null,
+      winner: null,
+    });
+  });
+
+  it("rejects a retirement after the set finished", () => {
+    expect(validateScore("retired", [s(6, 4)], "set").error).toMatch(
+      /completed/,
+    );
+  });
+});
+
+describe("isCompleteTiebreak", () => {
+  it.each([
+    [7, 5, 7],
+    [7, 0, 7],
+    [9, 7, 7],
+    [10, 8, 10],
+    [10, 0, 10],
+    [12, 10, 10],
+  ])("accepts %i-%i to %i", (a, b, target) =>
+    expect(isCompleteTiebreak(tb(a, b, target as 7 | 10))).toBe(true),
+  );
+
+  it.each([
+    [7, 6, 7],
+    [8, 7, 7],
+    [10, 9, 10],
+    [11, 10, 10],
+    [13, 10, 10],
+    [8, 6, 10],
+  ])("rejects %i-%i to %i", (a, b, target) =>
+    expect(isCompleteTiebreak(tb(a, b, target as 7 | 10))).toBe(false),
+  );
+
+  it("rejects a set with no target", () => {
+    expect(isCompleteTiebreak(s(6, 4))).toBe(false);
+  });
+});
+
+describe("tiebreak format", () => {
+  it("accepts a finished tiebreak", () => {
+    expect(validateScore("completed", [tb(10, 8)], "tiebreak")).toEqual({
+      error: null,
+      winner: "a",
+    });
+  });
+
+  it("derives the winner from the points", () => {
+    expect(validateScore("completed", [tb(8, 10)], "tiebreak")).toEqual({
+      error: null,
+      winner: "b",
+    });
+  });
+
+  it("rejects an unfinished tiebreak when completed", () => {
+    expect(validateScore("completed", [tb(10, 9)], "tiebreak").error).toMatch(
+      /not a finished tiebreak/,
+    );
+  });
+
+  it("rejects two tiebreaks", () => {
+    expect(
+      validateScore("completed", [tb(10, 8), tb(10, 8)], "tiebreak").error,
+    ).toMatch(/one tiebreak/);
+  });
+
+  it("requires a target of 7 or 10", () => {
+    expect(
+      validateScore("completed", [{ a: 10, b: 8 }], "tiebreak").error,
+    ).toMatch(/7 or 10/);
+  });
+
+  it("allows a retirement while undecided", () => {
+    expect(validateScore("retired", [tb(5, 3)], "tiebreak")).toEqual({
+      error: null,
+      winner: null,
+    });
+  });
+
+  it("rejects a retirement after the tiebreak finished", () => {
+    expect(validateScore("retired", [tb(10, 8)], "tiebreak").error).toMatch(
+      /completed/,
+    );
+  });
+
+  it("still allows a walkover", () => {
+    expect(validateScore("walkover", [], "tiebreak")).toEqual({
+      error: null,
+      winner: null,
+    });
+  });
+});
+
+describe("toMatchSets for short formats", () => {
+  it("stores a tiebreak as points with no games", () => {
+    expect(toMatchSets([tb(10, 8)], "tiebreak")).toEqual([
+      {
+        set_number: 1,
+        games_a: 0,
+        games_b: 0,
+        tiebreak_a: 10,
+        tiebreak_b: 8,
+        complete: true,
+        tiebreak_target: 10,
+      },
+    ]);
+  });
+
+  it("stores a single set exactly as a match set", () => {
+    expect(toMatchSets([s(6, 4)], "set")).toEqual([
+      {
+        set_number: 1,
+        games_a: 6,
+        games_b: 4,
+        tiebreak_a: null,
+        tiebreak_b: null,
+        complete: true,
+      },
+    ]);
+  });
+});
+
+describe("formatLabel", () => {
+  it.each([
+    ["match", undefined, "Best of 3"],
+    ["set", undefined, "Single set"],
+    ["tiebreak", 7, "Tiebreak to 7"],
+    ["tiebreak", 10, "Tiebreak to 10"],
+  ] as const)("labels %s", (format, target, expected) =>
+    expect(formatLabel(format, target)).toBe(expected),
+  );
 });

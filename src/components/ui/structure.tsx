@@ -128,21 +128,39 @@ export function initials(name: string) {
   return letters.toUpperCase();
 }
 
-/** Initials only: generated and uploaded avatars are deferred. */
+/**
+ * An uploaded picture when the player has one, initials otherwise. Decorative
+ * either way: every avatar sits beside the name it belongs to.
+ */
 export function Avatar({
   name,
   size = "md",
   muted = false,
+  src,
 }: {
   name: string;
   size?: "sm" | "md" | "lg";
   muted?: boolean;
+  /** Signed URL from the private avatars bucket. */
+  src?: string | null;
 }) {
   const sizes = {
     sm: "size-8 text-xs",
     md: "size-10 text-sm",
     lg: "size-16 text-xl",
   };
+
+  if (src) {
+    // A signed Supabase URL expires, so next/image would cache a dead upstream.
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        alt=""
+        src={src}
+        className={`shrink-0 rounded-full object-cover ${sizes[size]} bg-surface-sunken`}
+      />
+    );
+  }
 
   return (
     <span

@@ -40,6 +40,7 @@ export async function submitMatch(
     target_group: groupId,
     opponent,
     ...submission.value,
+    match_format: submission.format,
   });
   if (error)
     return { error: userFacingMessage(error), values: echoValues(formData) };
@@ -66,6 +67,7 @@ export async function updateMatch(
   const { error } = await supabase.rpc("edit_match", {
     target_match: matchId,
     ...submission.value,
+    match_format: submission.format,
   });
   if (error)
     return { error: userFacingMessage(error), values: echoValues(formData) };

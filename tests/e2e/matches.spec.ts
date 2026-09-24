@@ -6,6 +6,7 @@ import { createPlayer, signIn } from "./local-stack";
  * The verified match lifecycle with two real accounts, through the interface:
  * create and join a group, submit, edit, confirm, see the rating move, void it
  * with a reason, reject with a reason, withdraw, edit a profile, sign out.
+ * Short formats have their own journey in short-formats.spec.ts.
  * Carries over every check from the pre-redesign lifecycle test.
  */
 
@@ -208,15 +209,19 @@ test("two players complete the verified match lifecycle", async ({
     ada.getByRole("heading", { name: "Nothing here" }),
   ).toBeVisible();
 
-  // Profile: a new display name is saved and shown.
+  // Profile: a new display name, hometown, and bio are saved and shown.
   await ada.goto("/settings");
   await ada.getByLabel("Display name").fill(`Ada updated ${tag}`);
-  await ada.getByRole("button", { name: "Save name" }).click();
-  await expect(ada.getByText("Display name saved.")).toBeVisible();
+  await ada.getByLabel("Hometown").fill("Wellington");
+  await ada.getByLabel("Bio").fill("Lefty. Slice backhand.");
+  await ada.getByRole("button", { name: "Save profile" }).click();
+  await expect(ada.getByText("Profile saved.")).toBeVisible();
   await ada.goto("/profile");
   await expect(
     ada.getByRole("heading", { level: 1, name: `Ada updated ${tag}` }),
   ).toBeVisible();
+  await expect(ada.getByText(/Wellington/)).toBeVisible();
+  await expect(ada.getByText("Lefty. Slice backhand.")).toBeVisible();
 
   // Signing out ends the session.
   await ada.goto("/settings");

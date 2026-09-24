@@ -45,7 +45,7 @@ export async function createTournament(
 ): Promise<ActionState> {
   await requireUser("/tournaments/new");
   const values = Object.fromEntries(
-    ["groupId", "name", "cap", "seeding", "roundDays"].map((name) => [
+    ["groupId", "name", "cap", "seeding", "roundDays", "format"].map((name) => [
       name,
       field(formData, name),
     ]),
@@ -62,6 +62,7 @@ export async function createTournament(
     cap: Number(values.cap),
     seeding_method: values.seeding || "rating",
     days_per_round: Number(values.roundDays) || 7,
+    tournament_format: values.format || "match",
   });
   if (error) return { error: userFacingMessage(error), values };
 

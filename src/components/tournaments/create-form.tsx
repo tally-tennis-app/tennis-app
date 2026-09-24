@@ -68,6 +68,7 @@ export function CreateTournamentForm({
   );
   const [cap, setCap] = useState(v?.cap ?? "8");
   const [seeding, setSeeding] = useState(v?.seeding ?? "rating");
+  const [format, setFormat] = useState(v?.format ?? "match");
   const [roundDays, setRoundDays] = useState(v?.roundDays ?? "7");
 
   return (
@@ -117,6 +118,38 @@ export function CreateTournamentForm({
             />
           ))}
         </div>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-3">
+        <legend className="type-section mb-3">Format</legend>
+        <p className="text-muted -mt-2 text-sm">
+          Every tie in the draw is played this way. A set counts half a match
+          toward ratings, and a tiebreak half a set.
+        </p>
+        <Choice
+          name="format"
+          value="match"
+          checked={format === "match"}
+          onChange={setFormat}
+          label="Match"
+          hint="Best of three sets."
+        />
+        <Choice
+          name="format"
+          value="set"
+          checked={format === "set"}
+          onChange={setFormat}
+          label="Single set"
+          hint="One set decides each tie."
+        />
+        <Choice
+          name="format"
+          value="tiebreak"
+          checked={format === "tiebreak"}
+          onChange={setFormat}
+          label="Tiebreak"
+          hint="One tiebreak to 7 or 10 points decides each tie."
+        />
       </fieldset>
 
       <fieldset className="flex flex-col gap-3">
