@@ -127,6 +127,7 @@ export type Database = {
           set_number: number
           tiebreak_a: number | null
           tiebreak_b: number | null
+          tiebreak_target: number | null
         }
         Insert: {
           complete: boolean
@@ -136,6 +137,7 @@ export type Database = {
           set_number: number
           tiebreak_a?: number | null
           tiebreak_b?: number | null
+          tiebreak_target?: number | null
         }
         Update: {
           complete?: boolean
@@ -145,6 +147,7 @@ export type Database = {
           set_number?: number
           tiebreak_a?: number | null
           tiebreak_b?: number | null
+          tiebreak_target?: number | null
         }
         Relationships: [
           {
@@ -160,12 +163,14 @@ export type Database = {
         Row: {
           confirmed_at: string | null
           created_at: string
+          format: string
           group_id: string
           id: string
           outcome: string
           played_on: string
           player_a: string
           player_b: string
+          rejected_at: string | null
           rejection_reason: string | null
           retired_by: string | null
           status: string
@@ -179,12 +184,14 @@ export type Database = {
         Insert: {
           confirmed_at?: string | null
           created_at?: string
+          format?: string
           group_id: string
           id?: string
           outcome: string
           played_on?: string
           player_a: string
           player_b: string
+          rejected_at?: string | null
           rejection_reason?: string | null
           retired_by?: string | null
           status?: string
@@ -198,12 +205,14 @@ export type Database = {
         Update: {
           confirmed_at?: string | null
           created_at?: string
+          format?: string
           group_id?: string
           id?: string
           outcome?: string
           played_on?: string
           player_a?: string
           player_b?: string
+          rejected_at?: string | null
           rejection_reason?: string | null
           retired_by?: string | null
           status?: string
@@ -275,18 +284,27 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_path: string | null
+          bio: string | null
           created_at: string
           display_name: string
+          hometown: string | null
           id: string
         }
         Insert: {
+          avatar_path?: string | null
+          bio?: string | null
           created_at?: string
           display_name: string
+          hometown?: string | null
           id: string
         }
         Update: {
+          avatar_path?: string | null
+          bio?: string | null
           created_at?: string
           display_name?: string
+          hometown?: string | null
           id?: string
         }
         Relationships: []
@@ -460,6 +478,7 @@ export type Database = {
           created_by: string | null
           draw_size: number | null
           entrant_cap: number
+          format: string
           group_id: string
           id: string
           name: string
@@ -477,6 +496,7 @@ export type Database = {
           created_by?: string | null
           draw_size?: number | null
           entrant_cap: number
+          format?: string
           group_id: string
           id?: string
           name: string
@@ -494,6 +514,7 @@ export type Database = {
           created_by?: string | null
           draw_size?: number | null
           entrant_cap?: number
+          format?: string
           group_id?: string
           id?: string
           name?: string
@@ -574,12 +595,14 @@ export type Database = {
         Returns: {
           confirmed_at: string | null
           created_at: string
+          format: string
           group_id: string
           id: string
           outcome: string
           played_on: string
           player_a: string
           player_b: string
+          rejected_at: string | null
           rejection_reason: string | null
           retired_by: string | null
           status: string
@@ -604,6 +627,7 @@ export type Database = {
           days_per_round?: number
           seeding_method?: string
           target_group: string
+          tournament_format?: string
           tournament_name: string
         }
         Returns: string
@@ -614,6 +638,7 @@ export type Database = {
       }
       edit_match: {
         Args: {
+          match_format?: string
           match_outcome: string
           match_played_on?: string
           match_retired_by?: string
@@ -624,12 +649,14 @@ export type Database = {
         Returns: {
           confirmed_at: string | null
           created_at: string
+          format: string
           group_id: string
           id: string
           outcome: string
           played_on: string
           player_a: string
           player_b: string
+          rejected_at: string | null
           rejection_reason: string | null
           retired_by: string | null
           status: string
@@ -675,6 +702,17 @@ export type Database = {
         Args: { a: number; b: number; done: boolean; ta: number; tb: number }
         Returns: boolean
       }
+      is_legal_score_row: {
+        Args: {
+          a: number
+          b: number
+          done: boolean
+          ta: number
+          target: number
+          tb: number
+        }
+        Returns: boolean
+      }
       is_withdrawn: {
         Args: { player: string; target: string }
         Returns: boolean
@@ -686,12 +724,14 @@ export type Database = {
         Returns: {
           confirmed_at: string | null
           created_at: string
+          format: string
           group_id: string
           id: string
           outcome: string
           played_on: string
           player_a: string
           player_b: string
+          rejected_at: string | null
           rejection_reason: string | null
           retired_by: string | null
           status: string
@@ -713,6 +753,10 @@ export type Database = {
         Args: { event_detail: string; event_kind: string; target: string }
         Returns: undefined
       }
+      match_is_visible: {
+        Args: { match_rejected_at: string; match_status: string }
+        Returns: boolean
+      }
       place_winner: { Args: { target_tie: string }; Returns: undefined }
       register_for_tournament: { Args: { target: string }; Returns: undefined }
       reject_match:
@@ -721,12 +765,14 @@ export type Database = {
             Returns: {
               confirmed_at: string | null
               created_at: string
+              format: string
               group_id: string
               id: string
               outcome: string
               played_on: string
               player_a: string
               player_b: string
+              rejected_at: string | null
               rejection_reason: string | null
               retired_by: string | null
               status: string
@@ -749,12 +795,14 @@ export type Database = {
             Returns: {
               confirmed_at: string | null
               created_at: string
+              format: string
               group_id: string
               id: string
               outcome: string
               played_on: string
               player_a: string
               player_b: string
+              rejected_at: string | null
               rejection_reason: string | null
               retired_by: string | null
               status: string
@@ -791,6 +839,7 @@ export type Database = {
           created_by: string | null
           draw_size: number | null
           entrant_cap: number
+          format: string
           group_id: string
           id: string
           name: string
@@ -823,6 +872,7 @@ export type Database = {
       start_tournament: { Args: { target: string }; Returns: undefined }
       submit_match: {
         Args: {
+          match_format?: string
           match_outcome: string
           match_played_on?: string
           match_retired_by?: string
@@ -834,12 +884,14 @@ export type Database = {
         Returns: {
           confirmed_at: string | null
           created_at: string
+          format: string
           group_id: string
           id: string
           outcome: string
           played_on: string
           player_a: string
           player_b: string
+          rejected_at: string | null
           rejection_reason: string | null
           retired_by: string | null
           status: string
@@ -869,12 +921,14 @@ export type Database = {
         Returns: {
           confirmed_at: string | null
           created_at: string
+          format: string
           group_id: string
           id: string
           outcome: string
           played_on: string
           player_a: string
           player_b: string
+          rejected_at: string | null
           rejection_reason: string | null
           retired_by: string | null
           status: string
@@ -901,6 +955,7 @@ export type Database = {
         Args: {
           a: string
           b: string
+          match_format?: string
           match_outcome: string
           match_played_on: string
           match_retired_by: string
@@ -915,12 +970,14 @@ export type Database = {
             Returns: {
               confirmed_at: string | null
               created_at: string
+              format: string
               group_id: string
               id: string
               outcome: string
               played_on: string
               player_a: string
               player_b: string
+              rejected_at: string | null
               rejection_reason: string | null
               retired_by: string | null
               status: string
@@ -943,12 +1000,14 @@ export type Database = {
             Returns: {
               confirmed_at: string | null
               created_at: string
+              format: string
               group_id: string
               id: string
               outcome: string
               played_on: string
               player_a: string
               player_b: string
+              rejected_at: string | null
               rejection_reason: string | null
               retired_by: string | null
               status: string

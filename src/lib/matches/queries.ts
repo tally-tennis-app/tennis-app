@@ -2,7 +2,7 @@ import { cache } from "react";
 
 import { requireUser } from "@/src/lib/auth/dal";
 import { asUuid } from "@/src/lib/forms";
-import type { SetScore } from "@/src/lib/matches/score";
+import type { SetScore, TiebreakTarget } from "@/src/lib/matches/score";
 import {
   deriveStatus,
   EXPIRY_DAYS,
@@ -15,13 +15,13 @@ import { roundsFor, tieRoundName } from "@/src/lib/tournaments/types";
 // always player_a when submit_match() creates a row, but the view below
 // orients by submitted_by so it never depends on that.
 const matchColumns = `
-  id, group_id, played_on, outcome, status, player_a, player_b, winner,
+  id, group_id, played_on, outcome, format, status, player_a, player_b, winner,
   retired_by, submitted_by, created_at, confirmed_at, voided_at, void_reason,
-  rejection_reason,
+  rejection_reason, rejected_at,
   groups(name),
   a:profiles!matches_player_a_fkey(display_name),
   b:profiles!matches_player_b_fkey(display_name),
-  match_sets(set_number, games_a, games_b, tiebreak_a, tiebreak_b),
+  match_sets(set_number, games_a, games_b, tiebreak_a, tiebreak_b, tiebreak_target),
   tie:tournament_ties!matches_tournament_tie_id_fkey(round, tournament_id, tournaments(name, draw_size))
 `;
 
@@ -30,6 +30,7 @@ type MatchRow = {
   group_id: string;
   played_on: string;
   outcome: string;
+  format: string;
   status: string;
   player_a: string;
   player_b: string;
@@ -41,6 +42,7 @@ type MatchRow = {
   voided_at: string | null;
   void_reason: string | null;
   rejection_reason: string | null;
+  rejected_at: string | null;
   groups: { name: string } | null;
   a: { display_name: string } | null;
   b: { display_name: string } | null;
@@ -50,6 +52,7 @@ type MatchRow = {
     games_b: number;
     tiebreak_a: number | null;
     tiebreak_b: number | null;
+    tiebreak_target: number | null;
   }[];
   tie: {
     round: number;
@@ -94,9 +97,22 @@ function toView(
   deltas: Map<string, Map<string, number>>,
 ): MatchView {
   const submitterIsA = row.submitted_by !== row.player_b;
+  const format = row.format as MatchView["format"];
   const sets: SetScore[] = [...row.match_sets]
     .sort((x, y) => x.set_number - y.set_number)
     .map((set) => {
+      // A standalone tiebreak records points, not games.
+      if (format === "tiebreak") {
+        const [minePoints, theirPoints] = submitterIsA
+          ? [set.tiebreak_a ?? 0, set.tiebreak_b ?? 0]
+          : [set.tiebreak_b ?? 0, set.tiebreak_a ?? 0];
+        return {
+          a: minePoints,
+          b: theirPoints,
+          tiebreak: null,
+          target: (set.tiebreak_target ?? 10) as TiebreakTarget,
+        };
+      }
       const [mine, theirs] = submitterIsA
         ? [set.games_a, set.games_b]
         : [set.games_b, set.games_a];
@@ -126,6 +142,7 @@ function toView(
     group: { id: row.group_id, name: row.groups?.name ?? "Former group" },
     playedOn: row.played_on,
     outcome: row.outcome as MatchView["outcome"],
+    format,
     status: deriveStatus(row),
     submitter: submitterIsA ? playerA : playerB,
     opponent: submitterIsA ? playerB : playerA,
@@ -133,7 +150,7 @@ function toView(
     sets,
     submittedAt: row.created_at,
     confirmedAt: row.confirmed_at,
-    rejectedAt: null,
+    rejectedAt: row.rejected_at,
     rejectionReason: row.rejection_reason,
     voidedAt: row.voided_at,
     voidReason: row.void_reason,

@@ -67,6 +67,32 @@ insert into public.match_sets(match_id,set_number,games_a,games_b,complete) valu
 set local role authenticated;
 select results_eq($$select rating::int from public.get_ratings() where player_id=auth.uid()$$,$$values (1516)$$,'three-set winner with fewer games clamps multiplier to1.0');
 reset role;
+-- Short formats weight K: a set is half a match, a tiebreak half a set. The
+-- double bagel above is the reference at 20 points.
+update public.matches set format='set' where id='10000000-0000-0000-0000-000000000001';
+delete from public.match_sets where match_id='10000000-0000-0000-0000-000000000001';
+insert into public.match_sets(match_id,set_number,games_a,games_b,complete) values
+('10000000-0000-0000-0000-000000000001',1,6,0,true);
+set local role authenticated;
+select results_eq($$select rating::int from public.get_ratings() where player_id=auth.uid()$$,$$values (1510)$$,'a single set moves half as far as a match');
+reset role;
+update public.matches set format='tiebreak' where id='10000000-0000-0000-0000-000000000001';
+delete from public.match_sets where match_id='10000000-0000-0000-0000-000000000001';
+insert into public.match_sets(match_id,set_number,games_a,games_b,complete,tiebreak_a,tiebreak_b,tiebreak_target) values
+('10000000-0000-0000-0000-000000000001',1,0,0,true,10,0,10);
+set local role authenticated;
+select results_eq($$select rating::int from public.get_ratings() where player_id=auth.uid()$$,$$values (1505)$$,'a tiebreak moves half as far as a set');
+reset role;
+update public.match_sets set tiebreak_b=8 where match_id='10000000-0000-0000-0000-000000000001';
+set local role authenticated;
+-- A tiebreak records no games. Reading the margin from games would leave the
+-- multiplier neutral and land on exactly 1504; the points share lifts it.
+select ok((select rating from public.get_ratings() where player_id=auth.uid())>1504.1,'a tiebreak margin comes from points, not games');
+reset role;
+update public.matches set format='match' where id='10000000-0000-0000-0000-000000000001';
+delete from public.match_sets where match_id='10000000-0000-0000-0000-000000000001';
+insert into public.match_sets(match_id,set_number,games_a,games_b,complete) values
+('10000000-0000-0000-0000-000000000001',1,6,0,true),('10000000-0000-0000-0000-000000000001',2,6,0,true);
 update public.group_members set left_at=now() where user_id='22222222-2222-2222-2222-222222222222' and group_id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 set local role authenticated;
 select results_eq($$select active from public.get_ratings('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa') where display_name='Bo'$$,$$values (false)$$,'departed player retained as inactive');

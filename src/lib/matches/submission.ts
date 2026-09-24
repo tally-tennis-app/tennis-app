@@ -1,10 +1,13 @@
 import { asUuid, field } from "@/src/lib/forms";
 import {
+  matchFormats,
   toMatchSets,
   validateScore,
+  type MatchFormat,
   type MatchSetInput,
   type Outcome,
   type SetScore,
+  type TiebreakTarget,
 } from "@/src/lib/matches/score";
 
 /** The score form posts its sets as JSON; anything malformed becomes []. */
@@ -21,6 +24,10 @@ function parseSets(raw: string): SetScore[] {
         set?.tiebreak === ""
           ? null
           : Number(set.tiebreak),
+      target:
+        set?.target === 7 || set?.target === 10
+          ? (Number(set.target) as TiebreakTarget)
+          : null,
     }));
   } catch {
     return [];
@@ -45,10 +52,19 @@ export function readSubmission(
   formData: FormData,
   submitter: string,
   opponent: string,
-): { ok: true; value: Submission } | { ok: false; error: string } {
+):
+  | { ok: true; value: Submission; format: MatchFormat }
+  | { ok: false; error: string } {
   const outcome = field(formData, "outcome") as Outcome;
   if (!["completed", "retired", "walkover"].includes(outcome)) {
     return { ok: false, error: "Choose how the match ended." };
+  }
+
+  // A tournament tie's format is fixed by its tournament, which the database
+  // enforces regardless of what the form posts.
+  const format = field(formData, "format") as MatchFormat;
+  if (!matchFormats.includes(format)) {
+    return { ok: false, error: "Choose a match, single set, or tiebreak." };
   }
 
   const playedOn = field(formData, "playedOn");
@@ -57,7 +73,7 @@ export function readSubmission(
   }
 
   const sets = outcome === "walkover" ? [] : parseSets(field(formData, "sets"));
-  const check = validateScore(outcome, sets);
+  const check = validateScore(outcome, sets, format);
   if (check.error !== null) return { ok: false, error: check.error };
 
   const named = asUuid(field(formData, "winner"));
@@ -69,10 +85,11 @@ export function readSubmission(
 
   return {
     ok: true,
+    format,
     value: {
       match_outcome: outcome,
       match_winner: winner,
-      sets: toMatchSets(sets),
+      sets: toMatchSets(sets, format),
       match_played_on: playedOn,
       match_retired_by:
         outcome === "retired"

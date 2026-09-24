@@ -32,9 +32,10 @@ Run `npm run test:e2e` when routes, metadata, the manifest, browser behavior, or
 
 - Public Supabase publishable keys belong in environment variables, not hard-coded application modules.
 - Service-role keys and database passwords are server-only secrets and must never use a `NEXT_PUBLIC_` prefix.
-- Previews and production currently share one Supabase project, an accepted tradeoff
-  recorded in [ADR 0002](docs/decisions/0002-match-immutability-and-derived-ratings.md).
-  While that stands, no seeded or destructive end-to-end test may run against it.
+- Previews and production have independent Supabase projects, recorded in
+  [ADR 0003](docs/decisions/0003-separate-cloud-environments.md). Seeded or destructive
+  end-to-end tests run only against the local CLI stack on loopback, never against a
+  hosted project.
 - Every future user-data table requires Row Level Security policies and policy tests in the same pull request.
 - Ratings are derived from confirmed matches, never stored. A pull request adding a
   `rating` column requires a new decision record.
