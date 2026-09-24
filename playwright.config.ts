@@ -5,7 +5,7 @@ const integration = process.env.TEST_LOCAL_SUPABASE === "1";
 // Journeys that create accounts and data. They need the local stack, so they
 // run only in the integration projects that scripts/test-local-e2e.py enables.
 const dataJourneys =
-  /(matches|tournament|short-formats|avatars|accessibility-signed-in)\.spec\.ts/;
+  /(matches|tournament|short-formats|accessibility-signed-in)\.spec\.ts/;
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,

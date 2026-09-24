@@ -33,30 +33,22 @@ export async function signAvatar(path: string | null): Promise<string | null> {
 }
 
 /**
- * Signed avatar URLs for many players at once, keyed by player id.
+ * Signs many players' avatar paths at once, keyed by player id.
  *
- * One profiles query and one signing call however many rows are on the page:
- * a roster or a standings table would otherwise sign a URL per row. Players
- * with no picture, or whose object cannot be signed, are simply absent from
- * the map and fall back to initials.
+ * One signing call however many rows are on the page, and none at all when
+ * nobody has a picture. Callers that already join profiles pass the paths they
+ * have rather than paying for a second query. Players with no picture, or whose
+ * object cannot be signed, are absent from the map and fall back to initials.
  */
-export async function avatarUrlsFor(
-  playerIds: string[],
+export async function signAvatars(
+  rows: { id: string; path: string | null | undefined }[],
 ): Promise<Map<string, string>> {
-  const ids = [...new Set(playerIds)].filter(Boolean);
-  if (ids.length === 0) return new Map();
-
-  const supabase = await createSupabaseServerClient();
-  const { data } = await supabase
-    .from("profiles")
-    .select("id, avatar_path")
-    .in("id", ids);
-
-  const withPicture = (data ?? []).flatMap((row) =>
-    row.avatar_path ? [{ id: row.id, path: row.avatar_path }] : [],
+  const withPicture = rows.flatMap((row) =>
+    row.path ? [{ id: row.id, path: row.path }] : [],
   );
   if (withPicture.length === 0) return new Map();
 
+  const supabase = await createSupabaseServerClient();
   const { data: signed } = await supabase.storage
     .from("avatars")
     .createSignedUrls(
@@ -74,6 +66,22 @@ export async function avatarUrlsFor(
       const url = urlByPath.get(row.path);
       return url ? [[row.id, url] as [string, string]] : [];
     }),
+  );
+}
+
+/** For callers that hold only ids, such as the ratings RPC. */
+export async function avatarUrlsFor(
+  playerIds: string[],
+): Promise<Map<string, string>> {
+  const ids = [...new Set(playerIds)].filter(Boolean);
+  if (ids.length === 0) return new Map();
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, avatar_path")
+    .in("id", ids);
+  return signAvatars(
+    (data ?? []).map((r) => ({ id: r.id, path: r.avatar_path })),
   );
 }
 

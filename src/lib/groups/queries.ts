@@ -1,7 +1,7 @@
 import { cache } from "react";
 
 import { requireUser } from "@/src/lib/auth/dal";
-import { avatarUrlsFor } from "@/src/lib/profiles/players";
+import { signAvatars } from "@/src/lib/profiles/players";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
 
 export type GroupSummary = {
@@ -88,15 +88,18 @@ export const getGroup = cache(
       // removed_by adds a second foreign key to profiles, so the embed has to
       // name which relationship it means.
       .select(
-        "user_id, role, joined_at, left_at, removed_by, profiles!group_members_user_id_fkey(display_name)",
+        "user_id, role, joined_at, left_at, removed_by, profiles!group_members_user_id_fkey(display_name, avatar_path)",
       )
       .eq("group_id", groupId);
 
     if (memberError) throw memberError;
 
-    // One batched lookup for the whole roster rather than a URL per member.
-    const avatars = await avatarUrlsFor(
-      (memberRows ?? []).map((row) => row.user_id),
+    // The join above already carried each path, so this only signs them.
+    const avatars = await signAvatars(
+      (memberRows ?? []).map((row) => ({
+        id: row.user_id,
+        path: row.profiles?.avatar_path,
+      })),
     );
 
     const members: GroupMember[] = (memberRows ?? [])

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { createPlayer, signIn } from "./local-stack";
+import { createPlayer, giveAvatar, signIn } from "./local-stack";
 
 /**
  * The verified match lifecycle with two real accounts, through the interface:
@@ -77,6 +77,12 @@ test("two players complete the verified match lifecycle", async ({
   const groupUrl = ada.url().split("?")[0];
   const code = (await ada.locator(".type-code").first().textContent())!.trim();
 
+  // Ada has a profile picture. The bucket is private, so every screen that
+  // shows it signs its own URL.
+  await giveAvatar(adaPlayer);
+  await ada.goto("/profile");
+  await expect(ada.locator('img[src*="avatars"]').first()).toBeVisible();
+
   const bo = await signIn(browser, boPlayer);
   await bo.getByRole("button", { name: "Join group" }).first().click();
   await bo.getByLabel("Invite code").fill(code);
@@ -141,6 +147,21 @@ test("two players complete the verified match lifecycle", async ({
   await expect(
     table.getByRole("row", { name: new RegExp(names[1]) }),
   ).toContainText("1481");
+
+  // The picture follows the player out of their profile: a peer sees it in the
+  // standings, and Bo, who uploaded none, keeps initials.
+  await expect(
+    table
+      .getByRole("row", { name: new RegExp(names[0]) })
+      .locator('img[src*="avatars"]'),
+  ).toHaveCount(1);
+  await expect(
+    table.getByRole("row", { name: new RegExp(names[1]) }).locator("img"),
+  ).toHaveCount(0);
+
+  // And on the group roster.
+  await bo.goto(`${groupUrl}?tab=members`);
+  await expect(bo.locator('img[src*="avatars"]').first()).toBeVisible();
 
   // Confirmed is final: no edit. The organizer voids it with a reason.
   await ada.goto(matchUrl);

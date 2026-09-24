@@ -115,9 +115,14 @@ test("a small tournament runs from creation to champion", async ({
     .getByRole("dialog")
     .getByRole("button", { name: "Confirm score" })
     .click();
-  await expect(
-    bo_.getByText("Confirmed", { exact: true }).first(),
-  ).toBeVisible();
+  // Wait for the action to finish, as matches.spec.ts does: asserting straight
+  // after the click races the server action and the revalidation behind it.
+  // Confirming a tie also advances the draw, so this one waits longer than the
+  // five second default while the suite's other journeys share the server.
+  await expect(bo_.getByRole("dialog")).toBeHidden({ timeout: 15_000 });
+  await expect(bo_.getByText("Confirmed", { exact: true }).first()).toBeVisible(
+    { timeout: 15_000 },
+  );
 
   // Bo is champion, for everyone.
   for (const page of [organizer, cal_]) {
