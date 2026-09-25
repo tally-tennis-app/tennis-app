@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { createPlayer, groupOf, signIn } from "./local-stack";
+import { createPlayer, groupOf, rpc, signIn } from "./local-stack";
 
 /**
  * A single set and a standalone tiebreak, submitted and confirmed through the
@@ -135,4 +135,38 @@ test("an unfinished tiebreak is refused before it reaches the database", async (
   await expect(page.getByLabel(`${ada.name} tiebreak points`)).toHaveValue(
     "10",
   );
+});
+
+// A tie's format comes from its tournament rather than the format step, so the
+// form has to start in the tiebreak's one-row shape on its own.
+test("a tiebreak tournament tie takes a points score", async ({ browser }) => {
+  const tag = crypto.randomUUID().slice(0, 5);
+  const [ada, bo] = await Promise.all(
+    ["Ada", "Bo"].map((name) => createPlayer(`${name}${tag}`)),
+  );
+  const groupId = await groupOf(ada, bo);
+  const tournamentId = await rpc(ada, "create_tournament", {
+    target_group: groupId,
+    tournament_name: `Breakers ${tag}`,
+    cap: 4,
+    tournament_format: "tiebreak",
+  });
+  for (const player of [ada, bo]) {
+    await rpc(player, "register_for_tournament", { target: tournamentId });
+  }
+  await rpc(ada, "start_tournament", { target: tournamentId });
+
+  const page = await signIn(browser, ada);
+  await page.goto(`/tournaments/${tournamentId}`);
+  await page.getByRole("link", { name: "Log the result" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+
+  await page.getByRole("radio", { name: "7 points" }).check();
+  await page.getByLabel(`${ada.name} tiebreak points`).fill("7");
+  await page.getByLabel(`${bo.name} tiebreak points`).fill("3");
+  await page.getByRole("button", { name: "Continue" }).click();
+
+  await expect(page.getByText("Tiebreak to 7")).toBeVisible();
+  await page.getByRole("button", { name: "Send for confirmation" }).click();
+  await expect(page.getByText("Sent for confirmation")).toBeVisible();
 });
