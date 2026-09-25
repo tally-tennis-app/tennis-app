@@ -179,7 +179,11 @@ export function ScoreForm({
     initial?.sets[0]?.target ?? 10,
   );
   const [sets, setSets] = useState<SetDraft[]>(
-    initial ? toDraft(initial.sets) : [emptySet(), emptySet()],
+    // A tie's fixed format never passes through chooseFormat, so start from
+    // its shape: a tiebreak or single set has one row, not a match's two.
+    initial
+      ? toDraft(initial.sets)
+      : startingSets(fixedFormat ?? "match", "completed"),
   );
   const [winner, setWinner_] = useState(initial?.winnerId ?? "");
   const [stepError, setStepError] = useState<string | null>(null);
